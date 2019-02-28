@@ -12,7 +12,7 @@ $ sudo tail /var/log/kern.log # Print last 10 kernel log messages
 
 It's possible that by default the device is only accessible by root so we need to change the permissions after loading our module
 
-$ sudo chmod 0666 /dev/<MODULE_NAME>
+`$ sudo chmod 0666 /dev/<MODULE_NAME>`
 
 We should try to modify the module so the device is created with the correct permissions.
 
