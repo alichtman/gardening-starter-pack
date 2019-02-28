@@ -10,7 +10,7 @@ $ sudo rmmod rootkit.ko # Unload rootkit.
 $ sudo tail /var/log/kern.log # Print last 10 kernel log messages
 ```
 
-It's possible that by default the device is only accessible by root so we need to change the permissions after loading our module
+It's possible that by default the device is only accessible by root so we need to change the permissions after loading our module with:
 
 `$ sudo chmod 0666 /dev/<MODULE_NAME>`
 
@@ -41,9 +41,9 @@ We should try to modify the module so the device is created with the correct per
 ```bash
 $ sudo apt-get update
 $ apt-cache search linux-headers-$(uname -r)
-linux-headers-3.16.0-4-amd64 - Header files for Linux 3.16.0-4-amd64
-$ sudo apt-get install linux-headers-3.16.0-4-amd64
-$ cd /usr/src/linux-headers-3.16.0-4-amd64/
+linux-headers-<VERSION>-<ARCH> - Header files for Linux <VERSION>-<ARCH>
+$ sudo apt-get install linux-headers-<VERSION>-<ARCH>
+$ cd /usr/src/linux-headers-<VERSION>-<ARCH>/
 $ ls
 arch  include  Makefile  Module.symvers  scripts
 ```
