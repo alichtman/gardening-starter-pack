@@ -31,22 +31,20 @@ We should try to modify the module so the device is created with the correct per
 5. Hide/unhide arbitrary process.
 6. Hide/unhide files/directories.
 
-### Potential Approaches
-
-1. Look up kernel syscall table address using `kallsyms_lookup_name(<FUNC>)` from `linux/kallsyms.h`. Replace our custom syscalls with the actual ones, and then swap the originals back in after we've done what we want.
-
-
 ### Setting Up the Development Environment
+
+Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel. Enable trusted repository downloads in `Software and Updates`.
 
 ```bash
 $ sudo apt-get update
 $ apt-cache search linux-headers-$(uname -r)
-linux-headers-<VERSION>-<ARCH> - Header files for Linux <VERSION>-<ARCH>
-$ sudo apt-get install linux-headers-<VERSION>-<ARCH>
-$ cd /usr/src/linux-headers-<VERSION>-<ARCH>/
-$ ls
-arch  include  Makefile  Module.symvers  scripts
+$ sudo apt-get install linux-headers-$(uname -r)
+$ sudo apt-get install gcc make python3 
 ```
+
+### Technical Rundown
+
+**TODO**
 
 ### Sources
 
@@ -54,10 +52,21 @@ arch  include  Makefile  Module.symvers  scripts
 2. https://web.archive.org/web/20160725125039/https://www.big-daddy.fr/repository/Documentation/Hacking/Security/Malware/Rootkits/writing-rootkit.txt
 3. https://github.com/m0nad/Diamorphine
 4. https://github.com/Aearnus/syscall-rootkit
-5. http://derekmolloy.ie/writing-a-linux-kernel-module-part-1-introduction/
-6. http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
+5. [Intro to Kernel Modules](http://derekmolloy.ie/writing-a-linux-kernel-module-part-1-introduction/)
+6. [Character Devices](http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/)
 7. https://github.com/typoon/lkms/tree/master/genesis
 8. https://gist.github.com/jvns/6894934
 9. https://jvns.ca/blog/2013/10/08/day-6-i-wrote-a-rootkit/
 10. https://0x00sec.org/t/kernel-rootkits-getting-your-hands-dirty/1485
 11. https://github.com/mfontanini/Programs-Scripts/blob/master/rootkit/rootkit.c
+12. https://github.com/hanj4096/wukong/blob/master/lkm/rootkit.c
+13. https://github.com/a7vinx/liinux
+14. https://git.teknik.io/Monstro/Rootorium/src/commit/adb48bb82dedf9f5164cf16515e77f4466d5dce9/rkkern/src/main.c<Paste>
+15. https://github.com/NoviceLive/research-rootkit
+16. https://github.com/croemheld/lkm-rootkit
+17. https://github.com/bones-codes/the_colonel/blob/master/lkm/col_kl.c
+18. [Magic Packets](https://www.drkns.net/kernel-who-does-magic/)
+19. https://github.com/hanj4096/wukong/blob/master/lkm/rootkit.c
+20. [How Reptile Works](https://github.com/milabs/awesome-linux-rootkits/blob/master/details/reptile.md)
+21. [Reptile](https://github.com/f0rb1dd3n/Reptile)
+22. [Awesome Linux Rootkits](https://github.com/milabs/awesome-linux-rootkits)
