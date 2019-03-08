@@ -3,7 +3,7 @@
 ### Usage
 
 ```bash
-$ make # Compile the rootkit 
+$ make # Compile the rootkit
 $ sudo insmod rootkit.ko # Load this module into the kernel.
 $ lsmod # Display loaded kernel modules
 $ sudo rmmod rootkit.ko # Unload rootkit.
@@ -24,12 +24,11 @@ We should try to modify the module so the device is created with the correct per
 
 ### Features
 
-1. Modify the kernel’s syscall table and replace a system call to point to a program of the rootkit.
-2. Delete log entries on the system so there are no logs of the attacker activities.
-3. Replace `ps`, `top`, `netstat` and `lsof` to not show the processes which the rootkit is running.
-4. Replace `login` to add a backdoor.
-5. Hide/unhide arbitrary process.
-6. Hide/unhide files/directories.
+1. Delete log entries on the system so there are no logs of the attacker activities.
+2. Replace `ps`, `top`, `netstat` and `lsof` to not show the processes which the rootkit is running.
+3. Replace `login` to add a backdoor.
+4. Hide/unhide arbitrary process.
+5. Hide/unhide files/directories.
 
 ### Setting Up the Development Environment
 
@@ -39,7 +38,7 @@ Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox image from [osboxes](http
 $ sudo apt-get update
 $ apt-cache search linux-headers-$(uname -r)
 $ sudo apt-get install linux-headers-$(uname -r)
-$ sudo apt-get install gcc make python3 
+$ sudo apt-get install gcc make
 ```
 
 ### Technical Rundown
