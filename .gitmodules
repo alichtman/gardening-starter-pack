@@ -1,6 +1,3 @@
-[submodule "src/khook"]
-	path = src/khook
-	url = https://github.com/milabs/khook
 [submodule "rootkit/khook"]
 	path = rootkit/khook
 	url = https://github.com/milabs/khook
