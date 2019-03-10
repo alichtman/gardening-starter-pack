@@ -38,7 +38,8 @@ Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox image from [osboxes](http
 $ sudo apt-get update
 $ apt-cache search linux-headers-$(uname -r)
 $ sudo apt-get install linux-headers-$(uname -r)
-$ sudo apt-get install gcc make
+$ sudo apt-get install gcc make libelf-dev build-essential
+$ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
 ### Technical Rundown
@@ -62,7 +63,6 @@ $ sudo apt-get install gcc make
 13. https://github.com/a7vinx/liinux
 14. https://git.teknik.io/Monstro/Rootorium/src/commit/adb48bb82dedf9f5164cf16515e77f4466d5dce9/rkkern/src/main.c<Paste>
 15. https://github.com/NoviceLive/research-rootkit
-16. https://github.com/croemheld/lkm-rootkit
 17. https://github.com/bones-codes/the_colonel/blob/master/lkm/col_kl.c
 18. [Magic Packets](https://www.drkns.net/kernel-who-does-magic/)
 19. https://github.com/hanj4096/wukong/blob/master/lkm/rootkit.c
