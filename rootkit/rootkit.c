@@ -6,7 +6,8 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include "khook/engine.c"
+#include <linux/file.h>
+#include "khook/khook/engine.c"
 
 //#include <linux/mutex.h> // Will likely need this for handling interrupts.
 
@@ -33,12 +34,24 @@ MODULE_VERSION("0.1");
 // }
 
 // Hooking open syscall?
-KHOOK(open);
-static int khook_open(const char *path, int oflag) {
-    original = KHOOK_ORIGIN(open, path, oflag);
-    printk("%s(%p, %08x) = %d\n", __func__, path, oflag, original);
+/**
+KHOOK(fget);
+static int khook_fget(unsigned int fd) {
+    int original = KHOOK_ORIGIN(fget, fd);
+    printk("%s(%d) = %d\n", __func__, fd, original);
     return original;
 }
+**/
+
+KHOOK(inode_permission);
+static int khook_inode_permission(struct inode *inode, int mask)
+{
+    int ret = 0;
+    ret = KHOOK_ORIGIN(inode_permission, inode, mask);
+    printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
+    return ret;
+}
+
 
 /**
  * Rootkit module initialization.
@@ -55,6 +68,7 @@ static int rootkit_init(void) {
 static int rootkit_exit(void) {
     printk(KERN_INFO "Cleaning up rootkit.\n");
     khook_cleanup();
+    return 0;
 }
 
 module_init(rootkit_init);
