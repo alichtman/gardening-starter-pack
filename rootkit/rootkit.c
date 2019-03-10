@@ -3,13 +3,11 @@
  * @author	Aaron Lichtman, Arch Gupta  and Brandon Weidner
  * @brief	A rootkit. TODO: Expand description
  */
-#include <fcntl.h>
-#include <khook/engine.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include "khook/engine.c"
+
 //#include <linux/mutex.h> // Will likely need this for handling interrupts.
 
 MODULE_LICENSE("GPL");

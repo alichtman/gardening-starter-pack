@@ -1,7 +1,7 @@
-MODNAME		?= gardening-starter-pack
+MODNAME		?= garden
 
 obj-m		+= $(MODNAME).o
-$(MODNAME)-y	+= rep_mod.o
+$(MODNAME)-y	+= rootkit.o
 
 ccflags-y	+= -Werror -fno-stack-protector -fomit-frame-pointer
 ldflags-y	+= -T$(src)/khook/engine.lds
