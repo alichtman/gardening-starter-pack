@@ -7,7 +7,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/file.h>
-#include "khook/khook/engine.c"
+#include "khook/engine.c"
 
 //#include <linux/mutex.h> // Will likely need this for handling interrupts.
 
