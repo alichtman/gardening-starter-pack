@@ -113,12 +113,17 @@ def install(kernel_version):
 	create_config_header_file(config)
 	print_success("config.h created.")
 
+	# TODO: Compile rootkit
 	print_status("Compiling rootkit...")
-
 	print_success("Successful compilation.")
 
+	# TODO: Move compiled components to the right place.
+	print_status("Installing rootkit...")
 	print_success("Successful installation.")
-	pass
+
+	# TODO: Make them load on boot.
+	print_status("Making rootkit persistent...")
+	print_success("Persistence established.")
 
 
 def remove():
