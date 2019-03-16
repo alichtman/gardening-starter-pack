@@ -139,7 +139,6 @@ def main():
 	# args = parser.parse_args()
 
 	install(kernel_version)
-	pass
 
 
 if __name__ == "__main__":

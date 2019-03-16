@@ -32,13 +32,11 @@ We should try to modify the module so the device is created with the correct per
 
 ### Setting Up the Development Environment
 
-Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel. Enable trusted repository downloads in `Software and Updates`.
+Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox/VMWare image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel. Enable trusted repository downloads in `Software and Updates`.
 
 ```bash
 $ sudo apt-get update
-$ apt-cache search linux-headers-$(uname -r)
-$ sudo apt-get install linux-headers-$(uname -r)
-$ sudo apt-get install gcc make libelf-dev build-essential
+$ sudo apt-get install gcc make libelf-dev git
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
