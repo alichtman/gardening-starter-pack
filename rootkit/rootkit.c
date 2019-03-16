@@ -16,6 +16,7 @@ MODULE_AUTHOR("Arch Gupta");
 MODULE_AUTHOR("Brandon Weidner");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
+MODULE_LICENSE("GPL");
 
 // Look into module_param() and MODULE_PARM_DESC for adding parameters
 
@@ -63,12 +64,10 @@ static int __init rootkit_init(void) {
 /**
  * Called at exit. All cleanup should be done here.
  */
-static int __exit rootkit_exit(void) {
+static void __exit rootkit_exit(void) {
 	printk(KERN_INFO "Cleaning up rootkit.\n");
 	khook_cleanup();
-	return 0;
 }
 
 module_init(rootkit_init);
-module_init(rootkit_exit);
-MODULE_LICENSE("GPL");
+module_exit(rootkit_exit);
