@@ -3,20 +3,10 @@
 ### Usage
 
 ```bash
-$ make # Compile the rootkit
-$ sudo insmod rootkit.ko # Load this module into the kernel.
-$ lsmod # Display loaded kernel modules
-$ sudo rmmod rootkit.ko # Unload rootkit.
-$ sudo tail /var/log/kern.log # Print last 10 kernel log messages
+$ python3 setup.py install
 ```
 
-It's possible that by default the device is only accessible by root so we need to change the permissions after loading our module with:
-
-`$ sudo chmod 0666 /dev/<MODULE_NAME>`
-
-We should try to modify the module so the device is created with the correct permissions.
-
-### Rootkit Objectives
+### Objectives
 
 1. Gain as much control of the system as possible.
 2. Persist across restarts and make it hard to remove.
@@ -32,7 +22,7 @@ We should try to modify the module so the device is created with the correct per
 
 ### Setting Up the Development Environment
 
-Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox/VMWare image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel. Enable trusted repository downloads in `Software and Updates`.
+Download an `Ubuntu 18.04.2 Bionic Beaver` VirtualBox or VMWare image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel.
 
 ```bash
 $ sudo apt-get update
