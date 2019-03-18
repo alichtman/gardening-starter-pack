@@ -41,7 +41,7 @@ def prompt_yes_no(question):
 	Prints question and waits for Y/N. Loops on invalid response.
 	Returns True if Yes, False if No..
 	"""
-	print_status(question, "[Y / N]")
+	print_status(question + " [Y / N]")
 	valid_response = False
 	while not valid_response:
 		response = input().strip().lower()
@@ -53,11 +53,11 @@ def prompt_yes_no(question):
 			print_error("Invalid response. Enter either Y or N. No other letters are valid.")
 
 
-def prompt(text, default=""):
+def prompt(text, default):
 	"""
 	Prompt with the option to leave the default.
 	"""
-	print_status(text, "(Default: {})".format(default))
+	print_status(text + " [Default: {}]".format(default))
 	response = input().strip()
 	if response == "":
 		return default
@@ -102,7 +102,7 @@ def create_config_header_file(user_defines: dict):
 		f.write(contents)
 
 ####
-# Persistence Helpers
+# Persistence
 ####
 
 
