@@ -213,7 +213,7 @@ def uninstall():
 	# TODO: This will likely have to be more complete when we add more,
 	# but for now a simple `$ rmmod garden` works.
 	module = prompt("Enter the name of the module to remove.", "garden")
-	run_cmd("sudo rmmod {}".format(module))
+	run_cmd("rmmod {}".format(module), run_with_os=True)
 	print_success("Removed {} from modules.".format(module))
 
 
