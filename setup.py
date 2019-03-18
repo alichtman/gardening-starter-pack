@@ -81,7 +81,7 @@ def prompt(text, default):
 # Build Process Helpers
 ####
 
-def run_cmd(command):
+def run_cmd(command, working_dir=None):
 	"""
 	Command can be either a list or a string. Exits if running command
 	returns an error.
@@ -91,7 +91,7 @@ def run_cmd(command):
 		command = shlex.split(command)
 	try:
 		print_status("Executing: {}".format(command))
-		check_output(command, shell=True, stderr=STDOUT)
+		check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
 	except CalledProcessError as exc:
 		print_error("Error running command. Exiting.")
 		print(exc.output)
@@ -170,7 +170,7 @@ def install(kernel_version):
 
 	# TODO: Compile rootkit
 	print_status("Compiling rootkit...")
-	run_cmd("cd rootkit && make all")
+	run_cmd("make all", "./rootkit")
 	print_success("Successful compilation.")
 	sys.exit()
 
