@@ -89,10 +89,9 @@ def run_cmd(command):
 	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
 	if not isinstance(command, list):
 		command = shlex.split(command)
-
 	try:
 		print_status("Executing: {}".format(command))
-		check_output(command, stderr=STDOUT)
+		check_output(command, shell=True, stderr=STDOUT)
 	except CalledProcessError as exc:
 		print_error("Error running command. Exiting.")
 		print(exc.output)
@@ -109,7 +108,7 @@ def create_config_header_file(user_defines: dict):
 		contents += "#define {} {}".format(key, val)
 	contents += "#endif"
 
-	with open("config.h", "w") as f:
+	with open("rootkit/config.h", "w") as f:
 		f.write(contents)
 
 ####
