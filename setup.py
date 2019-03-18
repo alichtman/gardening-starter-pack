@@ -183,7 +183,7 @@ def install(kernel_version):
 
 	# Move the compiled kernel module to the kernel modules directories.
 	try:
-		print_status("Moving {} to {}.".format(module_curr_path, module_dest_path))
+		print_status("Moving {} to {}".format(module_curr_path, module_dest_path))
 		move(module_curr_path, module_dest_path)
 	except IOError as e:
 		print_error("Unable to copy file. {}".format(e))
@@ -191,7 +191,7 @@ def install(kernel_version):
 
 	# Load the kernel module
 	run_cmd("depmod")
-	run_cmd("insmod {}".format(module_dest_path))
+	run_cmd("insmod {}/{}".format(module_dest_path, config["MODULE_NAME"]))
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
