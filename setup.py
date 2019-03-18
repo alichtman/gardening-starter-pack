@@ -83,19 +83,22 @@ def prompt(text, default):
 
 def run_cmd(command, working_dir=None, run_with_os=False):
 	"""
-	Command can be either a list or a string. Exits if running command
+	Command can be either a list or a string if run_with_os is False. If
+	run_with_os is True, only strings are accepted. Exits if command
 	returns an error.
 	"""
 	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
-	if not isinstance(command, list):
-		command = shlex.split(command)
 
 	print_status("Executing: {}".format(command))
 	# For some reason, check_output can't successfully run the `insmod` command.
 	if run_with_os:
-		os.system(command)
+		if os.system(command) != 0:
+			print_error("Error running command. Exiting.")
+			sys.exit(1)
 	else:
 		try:
+			if not isinstance(command, list):
+				command = shlex.split(command)
 			check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
 		except CalledProcessError as exc:
 			print_error("Error running command. Exiting.")
