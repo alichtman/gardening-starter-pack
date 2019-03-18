@@ -81,7 +81,7 @@ def prompt(text, default):
 # Build Process Helpers
 ####
 
-def run_cmd(command, working_dir=None):
+def run_cmd(command, working_dir=None, run_with_os=False):
 	"""
 	Command can be either a list or a string. Exits if running command
 	returns an error.
@@ -89,13 +89,18 @@ def run_cmd(command, working_dir=None):
 	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
 	if not isinstance(command, list):
 		command = shlex.split(command)
-	try:
-		print_status("Executing: {}".format(command))
-		check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
-	except CalledProcessError as exc:
-		print_error("Error running command. Exiting.")
-		print(exc.output)
-		sys.exit(1)
+
+	print_status("Executing: {}".format(command))
+	# For some reason, check_output can't successfully run the `insmod` command.
+	if run_with_os:
+		os.system(command)
+	else:
+		try:
+			check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
+		except CalledProcessError as exc:
+			print_error("Error running command. Exiting.")
+			print(exc.output)
+			sys.exit(1)
 
 
 def create_config_header_file(user_defines: dict, path: str):
@@ -192,7 +197,7 @@ def install(kernel_version):
 
 	# Load the kernel module
 	run_cmd("depmod")
-	run_cmd("insmod {}".format(module_dest_path))
+	run_cmd("insmod {}".format(module_dest_path), run_with_os=True)
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
@@ -202,7 +207,11 @@ def install(kernel_version):
 
 
 def uninstall():
-    pass
+	# TODO: This will likely have to be more complete when we add more,
+	# but for now a simple `$ rmmod garden` works.
+	module = prompt("Enter the name of the module to remove.", "garden")
+	run_cmd("sudo rmmod {}".format(module))
+	print_success("Removed {} from modules.".format(module))
 
 
 def main():
