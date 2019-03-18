@@ -193,7 +193,7 @@ def remove_persistence(module_name):
 		with open("/etc/modules", "r") as f:
 			contents = f.readlines()
 
-		with open("/etc/modules", "w"):
+		with open("/etc/modules", "w") as f:
 			for line in [line.strip() for line in contents if line != module_name]:
 				f.write(line)
 		print_success("Persistence removed.")
