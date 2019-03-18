@@ -1,4 +1,7 @@
+KDIR = /lib/modules/$(shell uname -r)/build
+
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$$PWD
+	make -C $(KDIR) M=$$PWD
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$$PWD clean
+	rm -f config.h
+	make -C $(KDIR) M=$$PWD clean

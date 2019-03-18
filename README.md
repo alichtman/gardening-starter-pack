@@ -2,25 +2,10 @@
 
 ### Usage
 
-```bash
-$ make # Compile the rootkit
-$ sudo insmod rootkit.ko # Load this module into the kernel.
-$ lsmod # Display loaded kernel modules
-$ sudo rmmod rootkit.ko # Unload rootkit.
-$ sudo tail /var/log/kern.log # Print last 10 kernel log messages
-```
+To install, simply run `$ sudo python3 setup.py install`.
+To remove, run `$ sudo python3 setup.py uninstall` 
 
-It's possible that by default the device is only accessible by root so we need to change the permissions after loading our module with:
-
-`$ sudo chmod 0666 /dev/<MODULE_NAME>`
-
-We should try to modify the module so the device is created with the correct permissions.
-
-### Rootkit Objectives
-
-1. Gain as much control of the system as possible.
-2. Persist across restarts and make it hard to remove.
-3. Hide as best as possible.
+If you'd be more comfortable reading these same options in your terminal, run `python3 setup.py -h`.
 
 ### Features
 
@@ -32,13 +17,13 @@ We should try to modify the module so the device is created with the correct per
 
 ### Setting Up the Development Environment
 
-Download the `Ubuntu 18.04.2 Bionic Beaver` VirtualBox image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel. Enable trusted repository downloads in `Software and Updates`.
+Download an `Ubuntu 18.04.2 Bionic Beaver` VirtualBox or VMWare image from [osboxes](https://www.osboxes.org/ubuntu/). This should come with the `4.18.0-15-generic` kernel.
+
+Make sure you have a version of `Python 3.X` installed. I wrote this in `Python 3.6.7`, but anything that's 3 or above should work.
 
 ```bash
 $ sudo apt-get update
-$ apt-cache search linux-headers-$(uname -r)
-$ sudo apt-get install linux-headers-$(uname -r)
-$ sudo apt-get install gcc make libelf-dev build-essential
+$ sudo apt-get install gcc make libelf-dev git
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
@@ -61,7 +46,6 @@ $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack
 11. https://github.com/mfontanini/Programs-Scripts/blob/master/rootkit/rootkit.c
 12. https://github.com/hanj4096/wukong/blob/master/lkm/rootkit.c
 13. https://github.com/a7vinx/liinux
-14. https://git.teknik.io/Monstro/Rootorium/src/commit/adb48bb82dedf9f5164cf16515e77f4466d5dce9/rkkern/src/main.c<Paste>
 15. https://github.com/NoviceLive/research-rootkit
 17. https://github.com/bones-codes/the_colonel/blob/master/lkm/col_kl.c
 18. [Magic Packets](https://www.drkns.net/kernel-who-does-magic/)
