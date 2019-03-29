@@ -3,7 +3,7 @@ MODNAME		?= garden
 obj-m		+= $(MODNAME).o
 $(MODNAME)-y	+= rootkit.o
 
-ccflags-y	+= -Werror -fno-stack-protector -fomit-frame-pointer
+ccflags-y	+= -fno-stack-protector -fomit-frame-pointer -Werror
 ldflags-y	+= -T$(src)/khook/engine.lds
 
 KBUILD_CFLAGS	:= $(filter-out -pg,$(KBUILD_CFLAGS))
