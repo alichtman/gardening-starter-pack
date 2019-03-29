@@ -115,24 +115,6 @@ def run_cmd(command):
 	return out.communicate()[0], out.returncode
 
 ####
-# Build Process
-####
-
-# TODO: Remove this once you're sure we don't need a config.h file.
-# def create_config_header_file(user_defines: dict, path: str):
-# 	"""
-# 	Creates config.h file and populates it with user defined constants.
-# 	:param: user_defines: dict
-# 	"""
-# 	contents = "#ifndef _CONFIG_H\n#define _CONFIG_H\n"
-# 	for key, val in user_defines.items():
-# 		contents += "#define {} {}\n".format(key, val)
-# 	contents += "#endif"
-
-# 	with open(path, "w") as f:
-# 		f.write(contents)
-
-####
 # Kernel Module Loading/Unloading
 ####
 
@@ -253,12 +235,6 @@ def install(kernel_version):
 		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
 
 	run_cmd_exit_on_fail("make clean", "./rootkit")
-
-	# TODO: Remove this block of code once you're sure we don't need a config.h file.
-	# config_path = "./rootkit/config.h"
-	# print_status("Creating config file...")
-	# create_config_header_file(config, config_path)
-	# print_success("{} created.".format(config_path))
 
 	# Compile rootkit
 	print_status("Compiling rootkit...")
