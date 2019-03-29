@@ -88,6 +88,8 @@ static int __init rootkit_init(void) {
          * This change should theoretically be reflected in the global variable.
          **/
 
+        printk(KERN_INFO "rev_shell_ip: %s\n", rev_shell_ip);
+
         if (rev_shell_ip) {
             // TODO: Set up reverse shell.
         }
