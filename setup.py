@@ -102,7 +102,7 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 			check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
 		except CalledProcessError as exc:
 			print_error("Error running command. Exiting.")
-			print(exc.output)
+			print(str(exc.output))
 			sys.exit(1)
 
 
