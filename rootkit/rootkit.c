@@ -115,8 +115,8 @@ static int khook_inode_permission(struct inode* inode, int mask) {
  */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-static void legacy_timer_function_wrapper(_timer *timer) {
-	struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, timer);
+static void legacy_timer_function_wrapper(struct timer_list *timer) {
+	struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, t);
     // legacy_timer->data is currently always NULL
 	legacy_timer->function(legacy_timer->data);
 }
