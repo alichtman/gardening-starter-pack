@@ -224,7 +224,7 @@ def validate_os_and_kernel():
 		sys.exit(1)
 
 	kernel_version = os_info[2]
-	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic"]
+	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic", "4.18.0-17-generic"]
 	if kernel_version not in valid_kernels:
 		print_error("Invalid kernel. Exiting.")
 		sys.exit(1)
