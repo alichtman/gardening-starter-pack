@@ -1,1 +1,7 @@
 .DS_Store
+rootkit/.*
+rootkit/Module.symvers
+rootkit/config.h
+rootkit/garden.*
+rootkit/modules.order
+rootkit/rootkit.o

