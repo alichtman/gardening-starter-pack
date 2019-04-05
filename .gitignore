@@ -5,3 +5,4 @@ rootkit/config.h
 rootkit/garden.*
 rootkit/modules.order
 rootkit/rootkit.o
+.vscode/
