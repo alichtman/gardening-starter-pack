@@ -27,6 +27,8 @@ $ sudo apt-get install gcc make libelf-dev git
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
+Then, add this line to your crontab: `0 * * * * sudo ~/gardening-starter-pack/scripts/clean_vm.sh`
+
 ### Technical Rundown
 
 **TODO**
