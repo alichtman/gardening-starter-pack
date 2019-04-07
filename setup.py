@@ -249,6 +249,7 @@ def cleanup_command_files(driver_name):
 	"""
 	symlinks = ["/{}/{}".format(driver_name, param_name) for param_name in MODULE_PARAMS]
 	for link in symlinks:
+		print_status("Removing: " + link)
 		if os.path.islink(link):
 			os.unlink(link)
 
