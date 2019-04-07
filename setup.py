@@ -247,11 +247,10 @@ def cleanup_command_files(driver_name):
 	"""
 	Removes all symlinked files created in symlink_command_files().
 	"""
-	param_file_paths = get_all_param_files(driver_name, MODULE_PARAMS)
-	for param_name in [file.split("/")[-1] for file in param_file_paths]:
-		file = "/{}/{}".format(driver_name, param_name)
-		if os.path.islink(file):
-			os.unlink(file)
+	symlinks = ["/{}/{}".format(driver_name, param_name) for param_name in MODULE_PARAMS]
+	for link in symlinks:
+		if os.path.islink(link):
+			os.unlink(link)
 
 	command_dir = "/" + driver_name
 	if os.path.isdir(command_dir):
