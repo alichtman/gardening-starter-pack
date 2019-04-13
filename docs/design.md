@@ -43,13 +43,13 @@ This method of hooking syscalls is currently undetected by `chkrootkit`.
 
 The rootkit configuration process will be done interactively using the `setup.py` script.
 
-There are two functionalities you can currently toggle:
+There are three functionalities you can currently use:
 
 1. Hide files/folders.
 2. Block removal of the rootkit.
+3. Escalate privileges to root.
 
 <!-- 3. reverse_shell_ip -->
-<!-- 4. escalate_privileges -->
 
 ### How do you interact with the rootkit?
 

