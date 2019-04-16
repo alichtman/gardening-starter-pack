@@ -6,3 +6,6 @@ rootkit/garden.*
 rootkit/modules.order
 rootkit/rootkit.o
 .vscode/
+.idea
+CMakeLists.txt
+cmake-build-debug
