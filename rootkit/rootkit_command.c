@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <limits.h>
 
 /**
  * ##############
@@ -188,11 +189,11 @@ int communicate_with_lkm(action_task *data_to_pass) {
 	memset(&messenger, 0, sizeof(struct msqid_ds));
 	printf("Sending request to LKM\n");
 
-	if (msgctl(-1, -1, &messenger) == 0) {
-		print_green("Notification OK.\n");
-		return msgctl(-1, -1, (struct msqid_ds*) data_to_pass);
+	if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds*) data_to_pass) == 0) {
+		print_green("Communication OK.\n");
+		return 0;
 	} else {
-		print_red("Notification failed.\n");
+		print_red("Communication failed.\n");
 		return -1;
 	}
 }
