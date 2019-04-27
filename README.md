@@ -9,11 +9,7 @@ If you'd be more comfortable reading these same options in your terminal, run `p
 
 ### Features
 
-1. Delete log entries on the system so there are no logs of the attacker activities.
-2. Replace `ps`, `top`, `netstat` and `lsof` to not show the processes which the rootkit is running.
-3. Replace `login` to add a backdoor.
-4. Hide/unhide arbitrary process.
-5. Hide/unhide files/directories.
+1. Hide/unhide files/directories.
 
 ### Setting Up the Development Environment
 
@@ -27,13 +23,15 @@ $ sudo apt-get install gcc make libelf-dev git
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
-Then, add this line to your crontab: `0 * * * * sudo ~/gardening-starter-pack/scripts/clean_vm.sh`
+Then, add this line to your crontab to deal with the absurd number of debug logs created: `0 * * * * sudo ~/gardening-starter-pack/scripts/clean_vm.sh`
 
-### Technical Rundown
+### Technical Details
 
-**TODO**
+See the `docs/` directory.
 
-### Sources
+### Acknowledgements
+
+Here are some tutorials and projects that helped me as I was writing this.
 
 1. https://aearnus.github.io/2018/06/21/writing-a-rootkit.html
 2. https://web.archive.org/web/20160725125039/https://www.big-daddy.fr/repository/Documentation/Hacking/Security/Malware/Rootkits/writing-rootkit.txt
