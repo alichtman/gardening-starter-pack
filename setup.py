@@ -92,9 +92,15 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 	print_status("Executing: {}".format(command))
 	# For some reason, check_output can't successfully run the `insmod` command.
 	if run_with_os:
-		if os.system(command) != 0:
-			print_error("Error running command. Exiting.")
+		proc = Popen(command.split(), stdout=PIPE, stderr=STDOUT, cwd=working_dir, shell=True)
+		out, err = proc.communicate()
+		if err:
+			print_error(err)
 			sys.exit(1)
+
+		# if os.system(command) != 0:
+		# 	print_error("Error running command. Exiting.")
+		# 	sys.exit(1)
 	else:
 		try:
 			if not isinstance(command, list):
