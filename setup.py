@@ -94,6 +94,7 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 	if run_with_os:
 		proc = Popen(command.split(), stdout=PIPE, stderr=STDOUT, cwd=working_dir, shell=True)
 		out, err = proc.communicate()
+		print(out)
 		if err:
 			print_error(err)
 			sys.exit(1)
@@ -171,7 +172,7 @@ def load_module(module_path, config):
 	else:
 		options += " block_removal=0 "
 
-	cmd = "sudo insmod {} {}".format(module_path, options)
+	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
 
