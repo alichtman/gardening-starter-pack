@@ -56,7 +56,6 @@ typedef struct timer_list _timer;
 #define FILE_HIDE_ADD 3
 #define FILE_HIDE_RM 4
 #define FILE_HIDE_SHOW 5
-#define REVERSE_TCP_SHELL 6
 
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
@@ -142,10 +141,6 @@ int handle_task(action_task* task) {
 
 	case FILE_HIDE_SHOW:
 		// TODO: print contents of hidden_file_prefix array
-		break;
-
-	case REVERSE_TCP_SHELL:
-		// TODO
 		break;
 
 	default:
