@@ -171,7 +171,7 @@ def load_module(module_path, config):
 	else:
 		options += " block_removal=0 "
 
-	cmd = "insmod {} {}".format(module_path, options)
+	cmd = "sudo insmod {} {}".format(module_path, options)
 	run_cmd_exit_on_fail(cmd, run_with_os=True)
 
 

