@@ -1,6 +1,9 @@
 # gardening-starter-pack
 
-![Garden-Banner](img/Garden.png)
+<h1 align="center">
+  <img src="img/Garden.png" width="90%" />
+  <br />
+</h1>
 
 ### Disclaimer
 
