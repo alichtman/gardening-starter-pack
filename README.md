@@ -1,7 +1,7 @@
 # gardening-starter-pack
 
 <h1 align="center">
-  <img src="img/Garden.png" width="90%" />
+  <img src="img/Garden.png" width="75%" />
   <br />
 </h1>
 
