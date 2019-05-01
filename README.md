@@ -1,4 +1,4 @@
-# gardening-starter-pack
+# Linux Kernel Module Rookit
 
 <h1 align="center">
   <img src="img/Garden.png" width="75%" />
@@ -16,7 +16,7 @@ In order to prevent any malicious usage of this rootkit, reverse shell spawning 
 To install, simply run `$ sudo python3 setup.py install`.
 To remove, run `$ sudo python3 setup.py uninstall`
 
-If you'd be more comfortable reading these same options in your terminal, run `python3 setup.py -h`.
+If you'd be more comfortable reading these same options in your terminal, run `$ python3 setup.py -h`.
 
 ### Features
 
@@ -32,6 +32,12 @@ If you'd be more comfortable reading these same options in your terminal, run `p
 - 4.15.0-15-generic
 - 4.18.0-16-generic
 - 4.18.0-17-generic
+
+Theoretically, this rootkit will be compatible with every kernel above `4.14`, but these are the only kernels that have been tested.
+
+### Warning
+
+If you choose to develop on real hardware, make sure you have a full system backup. If you install the rootkit persistently, you **will not be able to uninstall it.** Your only choice for recovery is a full OS reinstall.
 
 ### Setting Up the Development Environment
 
