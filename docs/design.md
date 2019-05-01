@@ -1,12 +1,12 @@
 ### Architecture
 
-This rootkit takes advantage of the [`khook`](https://github.com/milabs/khook) library, which uses ROP chains to hook syscalls.
+This rootkit mainly relies on the [`khook`](https://github.com/milabs/khook) library, which uses ROP chains to hook syscalls without modifying the pointers in the syscall table.
 
 There is a set of diagrams in the `khook` README that lays out exactly how it works. I've included a modified version below for completeness.
 
 ---
 
-This diagram illustrates a call to function `X` without hooking:
+This diagram illustrates a call to syscall `X` without hooking:
 
 ```
 CALLER
@@ -17,7 +17,7 @@ CALLER
             `--------(2)-'
 ```
 
-This diagram illustrates a call to function `X` when `khook` is used:
+This diagram illustrates a call to syscall `X` when `khook` is used:
 
 ```
 CALLER
@@ -33,15 +33,15 @@ CALLER
             `------------|----|-------(8)-'              '-------(7)-'    |                          |
                          |    `-------------------------------------------|----------------------(5)-'
                          `-(6)--------------------------------------------'
-~~~
+```
 
 ---
 
-This method of hooking syscalls is currently undetected by `chkrootkit`.
+This method of hooking syscalls is currently undetected by `chkrootkit`, but can be detected by [Tyton](https://github.com/nbulischeck/tyton).
 
-### Rootkit configuration
+### Rootkit Configuration
 
-The rootkit configuration process will be done interactively using the `setup.py` script.
+The rootkit configuration process is done interactively using the `setup.py` script.
 
 There are three functionalities you can currently use:
 
@@ -53,13 +53,7 @@ There are three functionalities you can currently use:
 
 ### How do you interact with the rootkit?
 
-Kernel module variables are stored in `/sys/module/<MODULE_NAME>/parameters/<PARAM_NAME>`. Since this rootkit is a kernel module, and all the configuration of the rootkit is done with parameters, these parameters are theoretically writable at runtime (after messing with the file permissions in the setup script.)
-
-If you wanted to change the `reverse_shell_ip` on the fly, and the module name is `garden`, the command would look like this: `$ echo "$IP > /sys/module/garden/parameters/reverse_shell_ip`.
-
-I've created symlinks at `/<MODULE_NAME>/<PARAM>` to shorten the commands up, so all you need to enter is: `$ echo "$IP > /garden/reverse_shell_ip`
-
-**NOTE: You can not enable removal of the rootkit once you've enabled the `block_removal` toggle.**
+A userspace program to control the rootkit, called `rootkit_command.c`, is installed at `/garden`. (In a future update, it will be installed using whatever driver name you supply during the setup phase). In order to interact with the rootkit, simply run the command `$ /garden`.
 
 ### So how does it actually work? What syscalls are hooked?
 
