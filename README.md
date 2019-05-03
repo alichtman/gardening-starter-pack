@@ -9,7 +9,7 @@
 
 This codebase was developed for purely educational reasons. It is illegal to run this code on a machine that is not your own, or you do not have permission to run this on.
 
-In order to prevent any malicious usage of this rootkit, reverse shell spawning has been removed. If you uncomment all of the code marked `// Remnants of reverse shell`, the rootkit will cause a kernel panic when the magic packet to spawn a reverse shell is received.
+In order to prevent any malicious usage of this rootkit, reverse shell spawning has been removed. If you simply uncomment all of the code marked `// Remnants of reverse shell`, know that I've made some modifications to the rootkit to cause a kernel panic when the magic packet to spawn a reverse shell is received. 
 
 ### Usage
 
