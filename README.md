@@ -1,4 +1,4 @@
-# Linux Kernel Module Rookit
+# Linux Kernel Module Rootkit
 
 <h1 align="center">
   <img src="img/Garden.png" width="75%" />
