@@ -8,7 +8,7 @@ After configuration and installation, most of the usage of this rootkit will ori
 
 To use the reverse shell, you must input an IP address and port during the setup process. The reverse shell will only connect to this IP address and this port so that installing this rootkit on a machine doesn't leave the machine completely exposed.
 
-The reverse shell can be activated by sending an ICMP ping to the IP address of the machine you are attackiing. Make sure to have a `netcat` listener already open on the port you entered during setup.
+The reverse shell can be activated by sending an ICMP ping to the IP address of the machine you are attacking. Make sure to have a `netcat` listener already open on the port you entered during setup.
 
 On `macOS`, you would enter this series of commands to open a reverse shell:
 

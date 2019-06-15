@@ -1,4 +1,5 @@
-# Linux Kernel Module Rootkit
+# Gardening-Starter-Pack
+> Quite Literally a Rootkit
 
 <h1 align="center">
   <img src="img/Garden.png" width="75%" />
@@ -8,8 +9,6 @@
 ### Disclaimer
 
 This codebase was developed for purely educational reasons. It is illegal to run this code on a machine that is not your own, or you do not have permission to run this on.
-
-In order to prevent any malicious usage of this rootkit, reverse shell spawning has been removed. If you simply uncomment all of the code marked `// Remnants of reverse shell`, know that I've made some modifications to the rootkit to cause a kernel panic when the magic packet to spawn a reverse shell is received. 
 
 ### Usage
 
@@ -22,10 +21,12 @@ If you'd be more comfortable reading these same options in your terminal, run `$
 
 1. Hide/unhide files/directories.
 2. Escalate priveleges to root.
-3. Listen for magic packets to spawn reverse shell.
+3. Listen for magic packets (will not be stopped by local firewall) to spawn reverse shell.
 4. Hide rootkit.
 5. Block uninstallation of rootkit.
 6. Reboot persistence.
+
+NOTE: Reverse shell is currently broken. I need to read / understand more about kernel-threads in order to implement that part of the rootkit. The magic packet listener is fully functional.
 
 ### Tested Kernels
 
@@ -37,7 +38,7 @@ Theoretically, this rootkit will be compatible with every kernel above `4.14`, b
 
 ### Warning
 
-If you choose to develop on real hardware, make sure you have a full system backup. If you install the rootkit persistently, you **will not be able to uninstall it.** Your only choice for recovery is a full OS reinstall.
+If you choose to develop on real hardware, make sure you have a full system backup. If you install the rootkit persistently, you **will not be able to uninstall it.** Your only choice for recovery is a full OS reinstall. (At least, that I am aware of / was able to figure out. I had to re-image my VM a few times...)
 
 ### Setting Up the Development Environment
 
@@ -48,6 +49,7 @@ Make sure you have a version of `Python 3.X` installed. I wrote the build script
 ```bash
 $ sudo apt-get update
 $ sudo apt-get install gcc make libelf-dev git
+# This will not work without my private SSH key.
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 

@@ -1,8 +1,8 @@
 ### Architecture
 
-This rootkit mainly relies on the [`khook`](https://github.com/milabs/khook) library, which uses ROP chains to hook syscalls without modifying the pointers in the syscall table.
+This rootkit mainly relies on the [`khook`](https://github.com/milabs/khook) library, which uses ROP chains to hook syscalls without modifying the pointers in the syscall table or touching the IDT / IDTR.
 
-There is a set of diagrams in the `khook` README that lays out exactly how it works. I've included a modified version below for completeness.
+There is a set of diagrams in the `khook` README that lays out exactly how it works. I've included a modified version below.
 
 ---
 
@@ -37,17 +37,18 @@ CALLER
 
 ---
 
-This method of hooking syscalls is currently undetected by `chkrootkit`, but can be detected by [Tyton](https://github.com/nbulischeck/tyton).
+This method of hooking syscalls is currently undetected by `chkrootkit`, as it does not modify the Interrupt Descriptor Table or the Syscall Table. It can, however, be detected by [`Tyton`](https://github.com/nbulischeck/tyton). I have reproduced both of these claims.
 
 ### Rootkit Configuration
 
 The rootkit configuration process is done interactively using the `setup.py` script.
 
-There are three functionalities you can currently use:
+There are four functionalities you can currently use:
 
 1. Hide files/folders.
 2. Block removal of the rootkit.
 3. Escalate privileges to root.
+4. Send pings to machine regardless of firewall rules.
 
 <!-- 3. reverse_shell_ip -->
 
@@ -57,4 +58,4 @@ A userspace program to control the rootkit, called `rootkit_command.c`, is insta
 
 ### So how does it actually work? What syscalls are hooked?
 
-**TODO**
+**TODO**: All the documentation for this section is currently written in `C`. Check out the `rootkit/*.c` files for the good stuff.
