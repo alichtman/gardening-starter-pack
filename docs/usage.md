@@ -1,10 +1,12 @@
 ## Usage
 
-**General**
-
 After configuration and installation, most of the usage of this rootkit will originate from the installed `garden` binary in the `/` directory. Run `$ /garden` for an overview of the options.
 
-**Reverse Shell**
+### Root
+
+`$ kill 31337` will drop you into a root shell. You can also use the command binary, described above, to get root.
+
+### Reverse Shell
 
 To use the reverse shell, you must input an IP address and port during the setup process. The reverse shell will only connect to this IP address and this port so that installing this rootkit on a machine doesn't leave the machine completely exposed.
 

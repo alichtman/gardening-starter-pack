@@ -1,10 +1,10 @@
 # Gardening-Starter-Pack
 > Quite Literally a Rootkit
 
-<h1 align="center">
+<!-- <h1 align="center">
   <img src="img/Garden.png" width="75%" />
   <br />
-</h1>
+</h1> -->
 
 ### Disclaimer
 
@@ -30,9 +30,9 @@ NOTE: Reverse shell is currently broken. I need to read / understand more about 
 
 ### Tested Kernels
 
-- 4.15.0-15-generic
-- 4.18.0-16-generic
-- 4.18.0-17-generic
+- `4.15.0-15-generic`
+- `4.18.0-16-generic`
+- `4.18.0-17-generic`
 
 Theoretically, this rootkit will be compatible with every kernel above `4.14`, but these are the only kernels that have been tested.
 
