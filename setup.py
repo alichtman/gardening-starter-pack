@@ -223,9 +223,7 @@ def validate_os_and_kernel():
 	# TODO: Test more kernels
 	valid_kernels = ["4.18.0-15-generic", "4.18.0-16-generic", "4.18.0-17-generic"]
 	if kernel_version not in valid_kernels:
-		print_error("Invalid kernel. Exiting.")
-		sys.exit(1)
-
+		print_error("Untested kernel: {}".format(kernel_version))
 	return kernel_version
 
 
