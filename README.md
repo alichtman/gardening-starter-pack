@@ -17,6 +17,23 @@ To remove, run `$ sudo python3 setup.py uninstall`
 
 If you'd be more comfortable reading these same options in your terminal, run `$ python3 setup.py -h`.
 
+### Configuration Notes
+
+- The reverse shell is broken, and commented out at the moment. It causes a kernel panic whenver it is invoked. Still working on this problem.
+- No guarantees on things working if you use non-default configuration names. I have not tested every route through this code.
+
+A known good configuration sequence is:
+
+```bash
+$ sudo python3 setup.py install
+<ENTER>
+Y
+N
+Y
+<ENTER>
+Y
+```
+
 ### Features
 
 1. Hide/unhide files/directories.
@@ -53,7 +70,7 @@ $ sudo apt-get install gcc make libelf-dev git
 $ git clone --recurse-submodules git@github.com:alichtman/gardening-starter-pack.git
 ```
 
-Then, add this line to your crontab to deal with the absurd number of debug logs created: `0 * * * * sudo ~/gardening-starter-pack/scripts/clean_vm.sh`
+Then, (for long-term development) add this line to your crontab to deal with the absurd number of debug logs created: `0 * * * * sudo ~/gardening-starter-pack/scripts/clean_vm.sh`
 
 ### Technical Details
 
@@ -77,7 +94,7 @@ Here are some books, tutorials and projects that helped me as I was writing this
 3. [How Reptile Works](https://github.com/milabs/awesome-linux-rootkits/blob/master/details/reptile.md)
 4. [mfontanini's Rootkit](https://github.com/mfontanini/Programs-Scripts/blob/master/rootkit/rootkit.c)
 5. [hanj0496's Rootkit](https://github.com/hanj4096/wukong/blob/master/lkm/rootkit.c)
-6. [a7vinx's Rootkit Example](https://github.com/a7vinx/liinux)
+6. [a7vinx's Rootkit](https://github.com/a7vinx/liinux)
 7. [NoviceLive's Kernel Rootkit Tutorial/Analysis](https://github.com/NoviceLive/research-rootkit)
 8. [Bones-codes' Rootkit](https://github.com/bones-codes/the_colonel/)
 9. [Magic Packets](https://www.drkns.net/kernel-who-does-magic/)

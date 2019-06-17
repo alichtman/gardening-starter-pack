@@ -299,8 +299,7 @@ def main():
 	If it can, process args to proceed to installation/removal/help.
 	"""
 	kernel_version = validate_os_and_kernel()
-
-	if sys.argv[1] not in ["install", "uninstall"]:
+	if len(sys.argv) < 2 or sys.argv[1] not in ["install", "uninstall"]:
 		print_help()
 	elif "install" == sys.argv[1]:
 		install(kernel_version)

