@@ -34,6 +34,8 @@ Y
 Y
 ```
 
+You'll know things have worked properly if you run `$ kill 31337` and are dropped into a root shell. The `/garden` binary should not be visible when you run `$ ls /`, even though the command `/garden` will work. The output for `lsmod` should not include `garden` if you've followed the config above.
+
 ### Features
 
 1. Hide/unhide files/directories.
@@ -55,7 +57,7 @@ Theoretically, this rootkit will be compatible with every kernel above `4.14`, b
 
 ### Warning
 
-If you choose to develop on real hardware, make sure you have a full system backup. If you install the rootkit persistently, you **will not be able to uninstall it.** Your only choice for recovery is a full OS reinstall. (At least, that I am aware of / was able to figure out. I had to re-image my VM a few times...)
+If you choose to develop on real hardware, make sure you have a full system backup. If you install the rootkit with the "block uninstallation" option toggled, you **will not be able to uninstall it.** Your only choice for recovery is a full OS reinstall. (At least, that I am aware of / was able to figure out. I had to re-image my VM a few times...)
 
 ### Setting Up the Development Environment
 
